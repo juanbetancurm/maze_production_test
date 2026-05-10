@@ -35,10 +35,13 @@ export function getProgress(teamId) {
   return request(`/progress/${teamId}`);
 }
 
-export function completeLevel({ teamId, level, moves, livesRemaining }) {
+export function completeLevel({ teamId, level, moves, livesRemaining, elapsedSeconds }) {
   return request("/progress/complete-level", {
     method: "POST",
-    body: JSON.stringify({ teamId, level, moves, livesRemaining }),
+    body: JSON.stringify({ teamId, level, moves, livesRemaining, elapsedSeconds }),
   });
 }
 
+export function getLeaderboard(levelId) {
+  return request(`/progress/leaderboard/${levelId}`);
+}

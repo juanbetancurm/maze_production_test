@@ -5,7 +5,7 @@ const prisma = require("../db");
 // POST /api/progress/complete-level — Mark a level as completed
 router.post("/complete-level", async (req, res) => {
   try {
-    const { teamId, level, moves, livesRemaining } = req.body;
+    const { teamId, level, moves, livesRemaining, elapsedSeconds } = req.body;
 
     // Basic validation
     if (!teamId || typeof level !== "number") {
@@ -24,6 +24,10 @@ router.post("/complete-level", async (req, res) => {
         bestMoves:
           moves !== undefined
             ? { set: moves }
+            : undefined,
+        bestTimeSeconds:
+          elapsedSeconds !== undefined
+            ? { set: elapsedSeconds }
             : undefined,
         bestLivesRemaining:
           livesRemaining !== undefined
@@ -53,6 +57,7 @@ router.post("/complete-level", async (req, res) => {
         teamId,
         levelId: level,
         movesCount: moves || 0,
+        durationSeconds: elapsedSeconds ?? undefined,
         livesRemaining: livesRemaining || 0,
         status: "completed",
         endedAt: new Date(),
@@ -90,6 +95,59 @@ router.get("/:teamId", async (req, res) => {
   } catch (error) {
     console.error("Error fetching progress:", error);
     res.status(500).json({ error: "failed to fetch progress" });
+  }
+});
+
+// GET /api/progress/leaderboard/:levelId — Get top completed teams for a level
+router.get("/leaderboard/:levelId", async (req, res) => {
+  try {
+    const levelId = Number.parseInt(req.params.levelId, 10);
+
+    if (!Number.isInteger(levelId) || levelId <= 0) {
+      return res.status(400).json({ error: "levelId must be a positive integer" });
+    }
+
+    const leaderboard = await prisma.levelProgress.findMany({
+      where: {
+        levelId,
+        completed: true,
+      },
+      include: {
+        team: {
+          include: {
+            members: {
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
+        level: true,
+      },
+      orderBy: [
+        { bestMoves: "asc" },
+        { bestTimeSeconds: "asc" },
+        { bestLivesRemaining: "desc" },
+        { completedAt: "asc" },
+      ],
+      take: 10,
+    });
+
+    res.json({
+      levelId,
+      levelName: leaderboard[0]?.level?.name || null,
+      winners: leaderboard.map((entry, index) => ({
+        rank: index + 1,
+        teamId: entry.teamId,
+        course: entry.team.course,
+        members: entry.team.members.map((member) => member.name),
+        bestMoves: entry.bestMoves,
+        bestTimeSeconds: entry.bestTimeSeconds,
+        bestLivesRemaining: entry.bestLivesRemaining,
+        completedAt: entry.completedAt,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+    res.status(500).json({ error: "failed to fetch leaderboard" });
   }
 });
 

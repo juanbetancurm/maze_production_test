@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/GameContext';
 import { createTeam } from '../lib/api';
 
+const INSTRUCTIONS_STORAGE_KEY = 'anglemaze:instructionsSeen';
+
 export default function Registration() {
   const navigate = useNavigate();
   const { team, isHydrating, registerTeam, clearSavedSession } = useGame();
@@ -18,6 +20,9 @@ export default function Registration() {
   const [course, setCourse] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(() => {
+    return localStorage.getItem(INSTRUCTIONS_STORAGE_KEY) !== 'true';
+  });
 
   const handleMemberChange = (index, value) => {
     const updated = [...members];
@@ -66,6 +71,11 @@ export default function Registration() {
     }
   };
 
+  const closeInstructions = () => {
+    localStorage.setItem(INSTRUCTIONS_STORAGE_KEY, 'true');
+    setShowInstructions(false);
+  };
+
   if (isHydrating) {
     return (
       <div
@@ -97,6 +107,90 @@ export default function Registration() {
         fontFamily: 'monospace',
       }}
     >
+      {showInstructions && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            background: 'rgba(5, 8, 20, 0.86)',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '520px',
+              padding: '24px',
+              border: '1px solid #335',
+              borderRadius: '16px',
+              background: 'linear-gradient(180deg, #161a34 0%, #0f1224 100%)',
+              boxShadow: '0 18px 40px rgba(0, 0, 0, 0.45)',
+              color: '#d7def9',
+            }}
+          >
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', color: '#8ab4ff' }}>
+              How AngleMaze Works
+            </h2>
+            <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#b7c2e4', lineHeight: 1.6 }}>
+              Your team will guide a robot through each maze by typing a distance or angle, then
+              pressing the matching move button. Every command and every second count, so the best
+              teams solve the maze with few actions and fast thinking.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gap: '10px',
+                marginBottom: '18px',
+              }}
+            >
+              {[
+                '1. Register your team names and course before starting.',
+                '2. Type a distance in pixels, then press Forward to make the robot walk that amount.',
+                '3. Type an angle in degrees, then press Turn Left or Turn Right to change direction before moving again.',
+                '4. If the robot hits a wall, the level restarts. Winning saves your moves, time, and lives, then updates the winners chart.',
+              ].map((item) => (
+                <div
+                  key={item}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(138, 180, 255, 0.14)',
+                    fontSize: '13px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+              <button
+                onClick={closeInstructions}
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  fontFamily: 'monospace',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  background: '#18301d',
+                  border: '1px solid #44aa66',
+                  borderRadius: '10px',
+                  color: '#7df39a',
+                  cursor: 'pointer',
+                }}
+              >
+                Start Exploring
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1
         style={{
           fontSize: '28px',
@@ -111,11 +205,28 @@ export default function Registration() {
         style={{
           fontSize: '14px',
           color: '#889',
-          marginBottom: '32px',
+          marginBottom: '18px',
         }}
       >
         Register your team to start playing
       </p>
+
+      <button
+        onClick={() => setShowInstructions(true)}
+        style={{
+          marginBottom: '20px',
+          padding: '8px 12px',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          background: '#131722',
+          border: '1px solid #31405f',
+          borderRadius: '999px',
+          color: '#9cb6e9',
+          cursor: 'pointer',
+        }}
+      >
+        View Instructions
+      </button>
 
       {team && (
         <div

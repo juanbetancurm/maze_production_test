@@ -29,6 +29,12 @@ import config from '../game/config.js';
 import { normalizeProgressResponse, useGame } from '../context/GameContext';
 import { completeLevel as saveCompletedLevel } from '../lib/api';
 
+function formatElapsedTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function GamePage() {
 
   // WHAT: Read which level to play from the URL.
@@ -49,6 +55,8 @@ export default function GamePage() {
   const teamRef = useRef(team);
   const moveCountRef = useRef(0);
   const livesRef = useRef(5);
+  const levelStartTimeRef = useRef(Date.now());
+  const elapsedSecondsRef = useRef(0);
 
   // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -62,6 +70,7 @@ export default function GamePage() {
   const [position,     setPosition]     = useState({ x: 740, y: 60 });
   const [facingAngle,  setFacingAngle]  = useState(180);
   const [moveCount,    setMoveCount]    = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
    /**
    * WHAT: Remaining lives before checkpoint is lost.
@@ -119,6 +128,10 @@ export default function GamePage() {
   }, [lives]);
 
   useEffect(() => {
+    elapsedSecondsRef.current = elapsedSeconds;
+  }, [elapsedSeconds]);
+
+  useEffect(() => {
     if (isHydrating) return;
     if (!team) {
       navigate('/', { replace: true });
@@ -128,6 +141,18 @@ export default function GamePage() {
       navigate('/menu', { replace: true });
     }
   }, [canPlayLevel, isHydrating, navigate, team]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const nextElapsedSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - levelStartTimeRef.current) / 1000)
+      );
+      setElapsedSeconds(nextElapsedSeconds);
+    }, 250);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   // ── Phaser lifecycle ──────────────────────────────────────────────────────────
 
@@ -211,10 +236,12 @@ export default function GamePage() {
     gameRef.current._onReset = (wasRestart, cfg) => {
       const { startX = 60, startY = 60, facingAngle: startAngle = 0 } = cfg || {};
 
+      levelStartTimeRef.current = Date.now();
       setDisabled(false);
       setPosition({ x: startX, y: startY });
       setFacingAngle(startAngle);
       setMoveCount(0);
+      setElapsedSeconds(0);
       setLives(gameRef.current?._lives ?? 5);
       setCheckpointMsg('');
 
@@ -279,6 +306,7 @@ export default function GamePage() {
             level: levelNum,
             moves: moveCountRef.current,
             livesRemaining: livesRef.current,
+            elapsedSeconds: elapsedSecondsRef.current,
           });
 
           completeLevel(normalizeProgressResponse(result.progress));
@@ -705,6 +733,7 @@ export default function GamePage() {
             <div>Position: ({position.x}, {position.y})</div>
             <div>Facing: {facingAngle}°{facingLabel(facingAngle)}</div>
             <div>Moves: {moveCount}</div>
+            <div>Time: {formatElapsedTime(elapsedSeconds)}</div>
 
             {/* ── Lives display ─────────────────────────────────────────────── */}
             {/*
