@@ -136,9 +136,7 @@ export default function Registration() {
               How AngleMaze Works
             </h2>
             <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#b7c2e4', lineHeight: 1.6 }}>
-              Your team will guide a robot through each maze by typing a distance or angle, then
-              pressing the matching move button. Every command and every second count, so the best
-              teams solve the maze with few actions and fast thinking.
+              Guide your character through the maze using distance and angle commands. Fewer moves and faster times win!
             </p>
             <div
               style={{
@@ -148,10 +146,10 @@ export default function Registration() {
               }}
             >
               {[
-                '1. Register your team names and course before starting.',
-                '2. Type a distance in pixels, then press Forward to make the robot walk that amount.',
-                '3. Type an angle in degrees, then press Turn Left or Turn Right to change direction before moving again.',
-                '4. If the robot hits a wall, the level restarts. Winning saves your moves, time, and lives, then updates the winners chart.',
+                '1. Register your team and course to begin.',
+                '2. Enter a distance (in pixels) and press Forward to move.',
+                '3. Enter an angle (in degrees) and press Turn Left or Turn Right to change direction.',
+                '4. Hitting a wall restarts the level. Reach the exit to save your score!',
               ].map((item) => (
                 <div
                   key={item}
