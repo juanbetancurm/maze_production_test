@@ -35,6 +35,22 @@ function formatElapsedTime(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function getViewportWidth() {
+  if (typeof window === 'undefined') {
+    return 1280;
+  }
+
+  return window.innerWidth;
+}
+
+function getViewportHeight() {
+  if (typeof window === 'undefined') {
+    return 800;
+  }
+
+  return window.innerHeight;
+}
+
 export default function GamePage() {
 
   // WHAT: Read which level to play from the URL.
@@ -71,6 +87,8 @@ export default function GamePage() {
   const [facingAngle,  setFacingAngle]  = useState(180);
   const [moveCount,    setMoveCount]    = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
+  const [viewportHeight, setViewportHeight] = useState(getViewportHeight);
 
    /**
    * WHAT: Remaining lives before checkpoint is lost.
@@ -152,6 +170,16 @@ export default function GamePage() {
     }, 250);
 
     return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      setViewportWidth(getViewportWidth());
+      setViewportHeight(getViewportHeight());
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // ── Phaser lifecycle ──────────────────────────────────────────────────────────
@@ -495,6 +523,20 @@ export default function GamePage() {
     );
   }
 
+  const isCompactLayout = viewportWidth <= 980;
+  const isPhoneLayout = viewportWidth <= 640;
+  const maxCanvasWidth = isPhoneLayout
+    ? Math.max(280, Math.min(viewportWidth - 32, 420))
+    : isCompactLayout
+      ? Math.max(360, Math.min(viewportWidth - 48, 620))
+      : 800;
+  const maxCanvasHeight = isCompactLayout
+    ? Math.max(220, viewportHeight - (isPhoneLayout ? 360 : 280))
+    : Math.max(320, viewportHeight - 140);
+  const gameScale = Math.min(1, maxCanvasWidth / 800, maxCanvasHeight / 600);
+  const gameViewportWidth = Math.round(800 * gameScale);
+  const gameViewportHeight = Math.round(600 * gameScale);
+
 
 
 
@@ -535,15 +577,19 @@ export default function GamePage() {
       flexDirection: 'column',
       alignItems: 'center',
       padding: '16px',
+      width: '100%',
+      maxWidth: isCompactLayout ? '100%' : '1280px',
+      margin: '0 auto',
     }}>
 
       {/* ── Header (spans full width) ──────────────────────────────────────── */}
       <h1 style={{
         fontFamily: 'monospace',
-        fontSize: '22px',
+        fontSize: isPhoneLayout ? '18px' : '22px',
         color: '#6699cc',
         marginBottom: '12px',
         letterSpacing: '0.04em',
+        textAlign: 'center',
       }}>
        🧱 AngleMaze — Move with Math! 🧱
       </h1>
@@ -561,9 +607,11 @@ export default function GamePage() {
       */}
       <div style={{
         display: 'flex',
-        flexDirection: 'row',
-        gap: '24px',
-        alignItems: 'flex-start',
+        flexDirection: isCompactLayout ? 'column' : 'row',
+        gap: isCompactLayout ? '18px' : '24px',
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: isCompactLayout ? `${gameViewportWidth}px` : '1120px',
       }}>
 
         {/* ── Left side: Phaser game canvas ────────────────────────────────── */}
@@ -576,7 +624,31 @@ export default function GamePage() {
             flexShrink: 0 prevents the canvas from being squished if the
             browser window is narrower than the total row width.
         */}
-        <div id="game-container" style={{ flexShrink: 0 }} />
+        <div
+          style={{
+            width: `${gameViewportWidth}px`,
+            maxWidth: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '12px',
+            border: '1px solid #243246',
+            background: '#0b1020',
+            boxShadow: '0 12px 24px rgba(0, 0, 0, 0.22)',
+          }}
+        >
+          <div
+            style={{
+              width: '800px',
+              height: '600px',
+              transform: `scale(${gameScale})`,
+              transformOrigin: 'top center',
+              marginBottom: `${-(600 - gameViewportHeight)}px`,
+            }}
+          >
+            <div id="game-container" style={{ flexShrink: 0 }} />
+          </div>
+        </div>
 
         {/* ── Right side: control panel ────────────────────────────────────── */}
         {/*
@@ -597,7 +669,8 @@ export default function GamePage() {
           fontFamily: 'monospace',
           fontSize: '14px',
           color: '#99aabb',
-          minWidth: '200px',
+          minWidth: isCompactLayout ? '100%' : '200px',
+          width: isCompactLayout ? '100%' : 'auto',
         }}>
 
           {/* ── Forward card (green) ───────────────────────────────────────── */}
@@ -606,13 +679,20 @@ export default function GamePage() {
             flexDirection: 'column',
             alignItems: 'center',
             gap: '10px',
-            padding: '14px 24px',
+            padding: isPhoneLayout ? '14px 16px' : '14px 24px',
             border: '1px solid #1a4a1a',
             borderRadius: '10px',
             background: '#0a1f0a',
             width: '100%',
           }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              width: '100%',
+            }}>
               Distance:
               <input
                 ref={distRef}
@@ -642,13 +722,20 @@ export default function GamePage() {
             flexDirection: 'column',
             alignItems: 'center',
             gap: '10px',
-            padding: '14px 24px',
+            padding: isPhoneLayout ? '14px 16px' : '14px 24px',
             border: '1px solid #4a3800',
             borderRadius: '10px',
             background: '#1a1200',
             width: '100%',
           }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              width: '100%',
+            }}>
               Degrees:
               <input
                 ref={degreesRef}
@@ -663,7 +750,14 @@ export default function GamePage() {
               <span>°</span>
             </label>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                width: '100%',
+                flexDirection: isPhoneLayout ? 'column' : 'row',
+              }}
+            >
               <button
                 onClick={handleTurnLeft}
                 disabled={disabled}
@@ -704,6 +798,7 @@ export default function GamePage() {
               borderRadius: '6px',
               color: '#778',
               cursor: 'pointer',
+              width: isCompactLayout ? '100%' : 'auto',
             }}
           >
             ← Back to Menu
@@ -729,6 +824,8 @@ export default function GamePage() {
             color: '#556677',
             textAlign: 'center',
             lineHeight: '1.7',
+            width: '100%',
+            padding: isPhoneLayout ? '0 4px 8px 4px' : 0,
           }}>
             <div>Position: ({position.x}, {position.y})</div>
             <div>Facing: {facingAngle}°{facingLabel(facingAngle)}</div>

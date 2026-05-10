@@ -19,6 +19,7 @@
  *   so Arcade Physics gives us collision detection with minimal overhead.
  */
 
+import Phaser from 'phaser';
 import MazeScene from './scenes/MazeScene.js';
 
 const config = {
@@ -36,6 +37,16 @@ const config = {
   // WHY:  React renders a <div id="game-container"> in App.jsx; Phaser appends
   //       its canvas as a child of that div so React controls layout.
   parent: 'game-container',
+
+  // WHAT: Explicitly preserve a fixed internal game world during Phase 1.
+  // WHY:  The responsive work currently scales the canvas from React/CSS while
+  //       keeping maze coordinates, collisions, and scene math unchanged.
+  // HOW:  NONE means Phaser keeps the world at 800x600 instead of trying to
+  //       run its own fit/resize logic on top of our outer responsive wrapper.
+  scale: {
+    mode: Phaser.Scale.NONE,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
 
   // WHAT: Use nearest-neighbor scaling for all textures.
   // WHY: Keeps pixel-art textures crisp when scaled up.

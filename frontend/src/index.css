@@ -164,3 +164,33 @@ body {
 .maze-btn-reset:active {
   background: #0a1520;
 }
+
+@media (max-width: 980px) {
+  body {
+    display: block;
+  }
+
+  .maze-btn-forward,
+  .maze-btn-turn,
+  .maze-btn-reset {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .maze-input {
+    min-height: 40px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .maze-btn-forward,
+  .maze-btn-turn {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .maze-btn-reset {
+    min-height: 42px;
+  }
+}
