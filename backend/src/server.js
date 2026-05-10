@@ -9,10 +9,35 @@ const progressRouter = require("./routes/progress");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const configuredOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isAllowedDevOrigin(origin) {
+  return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+}
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (configuredOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (process.env.NODE_ENV !== "production" && isAllowedDevOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(express.json());

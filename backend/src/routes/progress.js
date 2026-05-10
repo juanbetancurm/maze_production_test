@@ -18,6 +18,7 @@ router.post("/complete-level", async (req, res) => {
         teamId_levelId: { teamId, levelId: level },
       },
       data: {
+        unlocked: false,
         completed: true,
         completedAt: new Date(),
         bestMoves:

@@ -1,29 +1,66 @@
 /**
- * App.jsx — Route definitions for AngleMaze.
+ * App.jsx - Route definitions and route guards for AngleMaze.
  *
- * WHAT: Defines which page component renders at each URL.
- * WHY: Separates registration, level menu, and game into distinct screens
- *   with their own URLs, enabling back/forward navigation.
- * HOW: React Router's <Routes> matches the current URL to a <Route>.
+ * WHAT: Maps URLs to pages and protects routes that require a saved team.
+ * WHY: Menu and game pages should not open without a valid active team.
+ * HOW: A small wrapper checks hydration state and redirects to registration
+ *   when protected routes are accessed without a team.
  */
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useGame } from './context/GameContext';
 import Registration from './pages/Registration';
 import LevelMenu from './pages/LevelMenu';
 import GamePage from './pages/GamePage';
 
+function RequireTeam({ children }) {
+  const { team, isHydrating } = useGame();
+
+  if (isHydrating) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '24px',
+          fontFamily: 'monospace',
+          color: '#99aabb',
+        }}
+      >
+        Restoring saved team...
+      </div>
+    );
+  }
+
+  if (!team) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
-      {/* Default: redirect to registration */}
       <Route path="/" element={<Registration />} />
-
-      {/* Level menu: shown after registration */}
-      <Route path="/menu" element={<LevelMenu />} />
-
-      {/* Game: the Phaser maze for a specific level */}
-      <Route path="/game/:levelNum" element={<GamePage />} />
-
-      {/* Fallback: unknown URLs redirect to registration */}
+      <Route
+        path="/menu"
+        element={(
+          <RequireTeam>
+            <LevelMenu />
+          </RequireTeam>
+        )}
+      />
+      <Route
+        path="/game/:levelNum"
+        element={(
+          <RequireTeam>
+            <GamePage />
+          </RequireTeam>
+        )}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -26,7 +26,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import config from '../game/config.js';
-import { useGame } from '../context/GameContext';
+import { normalizeProgressResponse, useGame } from '../context/GameContext';
+import { completeLevel as saveCompletedLevel } from '../lib/api';
 
 export default function GamePage() {
 
@@ -36,13 +37,18 @@ export default function GamePage() {
   //   This means each level has its own URL — bookmarkable and shareable.
   const { levelNum } = useParams();
   const navigate = useNavigate();
-  const { completeLevel } = useGame();
+  const { team, levelProgress, isHydrating, completeLevel } = useGame();
   const levelNumber = parseInt(levelNum, 10) || 1;
+  const currentProgress = levelProgress[levelNumber];
+  const canPlayLevel = Boolean(currentProgress?.unlocked && !currentProgress?.completed);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const gameRef    = useRef(null);
   const distRef    = useRef(null);
   const degreesRef = useRef(null);
+  const teamRef = useRef(team);
+  const moveCountRef = useRef(0);
+  const livesRef = useRef(5);
 
   // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -99,6 +105,29 @@ export default function GamePage() {
    *   Empty string '' = no message shown.
    */
   const [encourageMsg, setEncourageMsg] = useState('');
+
+  useEffect(() => {
+    teamRef.current = team;
+  }, [team]);
+
+  useEffect(() => {
+    moveCountRef.current = moveCount;
+  }, [moveCount]);
+
+  useEffect(() => {
+    livesRef.current = lives;
+  }, [lives]);
+
+  useEffect(() => {
+    if (isHydrating) return;
+    if (!team) {
+      navigate('/', { replace: true });
+      return;
+    }
+    if (!canPlayLevel) {
+      navigate('/menu', { replace: true });
+    }
+  }, [canPlayLevel, isHydrating, navigate, team]);
 
   // ── Phaser lifecycle ──────────────────────────────────────────────────────────
 
@@ -242,8 +271,24 @@ export default function GamePage() {
      *   function immediately — any code after it never executes.
      *   Moving it BEFORE the `return` fixes the issue.
      */
-    gameRef.current._onLevelWin = (levelNum) => {
-      completeLevel(levelNum);
+    gameRef.current._onLevelWin = async (levelNum) => {
+      try {
+        if (teamRef.current?.id) {
+          const result = await saveCompletedLevel({
+            teamId: teamRef.current.id,
+            level: levelNum,
+            moves: moveCountRef.current,
+            livesRemaining: livesRef.current,
+          });
+
+          completeLevel(normalizeProgressResponse(result.progress));
+        } else {
+          completeLevel(levelNum);
+        }
+      } catch (error) {
+        console.error('Error saving completed level:', error);
+        completeLevel(levelNum);
+      }
 
       // Navigate back to the level menu after a short celebration delay.
       // The delay gives the "You Win!" message time to display.
@@ -402,6 +447,25 @@ export default function GamePage() {
   const handleLevelSwitch = (level) => {
     getScene()?.setLevel(level);
   };
+
+  if (isHydrating || !team || !canPlayLevel) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '24px',
+          fontFamily: 'monospace',
+          color: '#99aabb',
+        }}
+      >
+        Loading level...
+      </div>
+    );
+  }
 
 
 

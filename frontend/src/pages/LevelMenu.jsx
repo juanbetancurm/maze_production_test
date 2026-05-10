@@ -36,7 +36,24 @@ const LEVELS = [
 
 export default function LevelMenu() {
   const navigate = useNavigate();
-  const { team, levelProgress, isGameFinished } = useGame();
+  const { team, levelProgress, isGameFinished, isHydrating, hydrateError } = useGame();
+
+  if (isHydrating) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '24px',
+        fontFamily: 'monospace',
+        color: '#99aabb',
+      }}>
+        Restoring saved team...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -52,6 +69,12 @@ export default function LevelMenu() {
       <h1 style={{ fontSize: '24px', color: '#6699cc', marginBottom: '6px' }}>
         AngleMaze
       </h1>
+
+      {hydrateError && (
+        <p style={{ fontSize: '13px', color: '#ff6655', marginBottom: '12px' }}>
+          {hydrateError}
+        </p>
+      )}
 
       {/* ── Team info ──────────────────────────────────────────────────────── */}
       {team && (
