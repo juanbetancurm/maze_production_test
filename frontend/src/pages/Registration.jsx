@@ -133,7 +133,7 @@ export default function Registration() {
             }}
           >
             <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', color: '#8ab4ff' }}>
-              How AngleMaze Works
+              Instructions
             </h2>
             <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#b7c2e4', lineHeight: 1.6 }}>
               Guide your character through the maze using distance and angle commands. Fewer moves and faster times win!
@@ -182,7 +182,7 @@ export default function Registration() {
                   cursor: 'pointer',
                 }}
               >
-                Start Exploring
+                Start playing!
               </button>
             </div>
           </div>
