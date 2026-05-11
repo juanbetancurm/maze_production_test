@@ -332,6 +332,30 @@ body {
   color: #31281e;
 }
 
+.maze-mobile-display-input {
+  width: 100%;
+  max-width: 220px;
+  border: none;
+  background: transparent;
+  color: #31281e;
+  font-family: monospace;
+  font-size: 44px;
+  line-height: 1;
+  font-weight: bold;
+  text-align: center;
+  outline: none;
+}
+
+.maze-mobile-display-input::placeholder {
+  color: #31281e;
+  opacity: 0.55;
+}
+
+.maze-mobile-display-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .maze-mobile-action-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

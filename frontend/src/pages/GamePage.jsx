@@ -505,6 +505,20 @@ export default function GamePage() {
     }
   };
 
+  const handleMobileQuantityChange = (event) => {
+    const { value } = event.target;
+
+    if (value === '') {
+      setMobileQuantity(0);
+      return;
+    }
+
+    const parsedValue = Number(value);
+    if (Number.isFinite(parsedValue) && parsedValue >= 0) {
+      setMobileQuantity(parsedValue);
+    }
+  };
+
   /**
    * handleStartOver()
    *
@@ -705,7 +719,17 @@ export default function GamePage() {
             <div className="maze-mobile-console">
               <div className="maze-mobile-display">
                 <span className="maze-mobile-display-label">Quantity</span>
-                <span className="maze-mobile-display-value">{mobileQuantity}</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  value={mobileQuantity === 0 ? '' : mobileQuantity}
+                  onChange={handleMobileQuantityChange}
+                  disabled={disabled}
+                  placeholder="0"
+                  className="maze-mobile-display-input"
+                />
               </div>
 
               <div className="maze-mobile-action-row">
