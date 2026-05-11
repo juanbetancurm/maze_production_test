@@ -624,13 +624,9 @@ export default function GamePage() {
     }}>
 
       {/* ── Header (spans full width) ──────────────────────────────────────── */}
-      <h1 style={{
-        fontFamily: 'monospace',
-        fontSize: isPhoneLayout ? '18px' : '22px',
-        color: '#6699cc',
+      <h1 className="maze-page-title" style={{
+        fontSize: isPhoneLayout ? 'clamp(1.6rem, 7vw, 2.2rem)' : 'clamp(2rem, 4vw, 3rem)',
         marginBottom: '12px',
-        letterSpacing: '0.04em',
-        textAlign: 'center',
       }}>
        🧱 AngleMaze — Move with Math! 🧱
       </h1>
@@ -646,12 +642,9 @@ export default function GamePage() {
           gap: '24px' adds spacing between the canvas and controls.
           alignItems: 'flex-start' aligns both to the top edge.
       */}
-      <div style={{
-        display: 'flex',
+      <div className="maze-game-layout" style={{
         flexDirection: isCompactLayout ? 'column' : 'row',
         gap: isCompactLayout ? '18px' : '24px',
-        alignItems: 'center',
-        width: '100%',
         maxWidth: isCompactLayout ? `${gameViewportWidth}px` : '1120px',
       }}>
 
@@ -666,16 +659,11 @@ export default function GamePage() {
             browser window is narrower than the total row width.
         */}
         <div
+          className="maze-canvas-shell"
           style={{
             width: `${gameViewportWidth}px`,
             maxWidth: '100%',
-            display: 'flex',
-            justifyContent: 'center',
             overflow: 'hidden',
-            borderRadius: '12px',
-            border: '1px solid #243246',
-            background: '#0b1020',
-            boxShadow: '0 12px 24px rgba(0, 0, 0, 0.22)',
           }}
         >
           <div
@@ -701,15 +689,7 @@ export default function GamePage() {
             against the height of the maze canvas (600px).
             minWidth prevents the controls from collapsing too narrow.
         */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '14px',
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          color: '#99aabb',
+        <div className="maze-game-controls" style={{
           minWidth: isCompactLayout ? '100%' : '200px',
           width: isCompactLayout ? '100%' : 'auto',
         }}>
@@ -783,16 +763,8 @@ export default function GamePage() {
             </div>
           )}
 
-          <div style={{
+          <div className="maze-card maze-game-card maze-game-card-accent" style={{
             display: isPhoneLayout ? 'none' : 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '14px 24px',
-            border: '1px solid #1a4a1a',
-            borderRadius: '10px',
-            background: '#0a1f0a',
-            width: '100%',
           }}>
             <label style={{
                 display: 'flex',
@@ -802,7 +774,7 @@ export default function GamePage() {
                 flexWrap: 'wrap',
                 width: '100%',
               }}>
-                Distance:
+                <span className="maze-game-label">Distance</span>
                 <input
                   ref={distRef}
                   type="number"
@@ -813,7 +785,7 @@ export default function GamePage() {
                   className="maze-input"
                   style={{ width: '72px' }}
                 />
-                <span>px</span>
+                <span className="maze-game-unit">px</span>
               </label>
 
             <button
@@ -826,16 +798,8 @@ export default function GamePage() {
           </div>
 
           {/* ── Turn card (amber) ──────────────────────────────────────────── */}
-          <div style={{
+          <div className="maze-card maze-game-card" style={{
             display: isPhoneLayout ? 'none' : 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '14px 24px',
-            border: '1px solid #4a3800',
-            borderRadius: '10px',
-            background: '#1a1200',
-            width: '100%',
           }}>
             <label style={{
               display: 'flex',
@@ -845,7 +809,7 @@ export default function GamePage() {
               flexWrap: 'wrap',
               width: '100%',
             }}>
-              Degrees:
+              <span className="maze-game-label">Degrees</span>
               <input
                 ref={degreesRef}
                 type="number"
@@ -859,8 +823,7 @@ export default function GamePage() {
               <span>°</span>
             </label>
 
-            {isPhoneLayout && (
-              <div className="maze-turn-icon-row">
+            <div style={{ display: 'none' }}>
                 <button
                   onClick={handleTurnLeft}
                   disabled={disabled}
@@ -877,8 +840,7 @@ export default function GamePage() {
                   <span className="maze-turn-icon-symbol">↻</span>
                   <span className="maze-turn-icon-label">Turn Right</span>
                 </button>
-              </div>
-            )}
+            </div>
 
             <div
               style={{
@@ -919,48 +881,27 @@ export default function GamePage() {
               gameRef.current = null;
               navigate('/menu');
             }}
-            style={{
-              padding: '8px 16px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              background: '#111',
-              border: '1px solid #334',
-              borderRadius: '6px',
-              color: '#778',
-              cursor: 'pointer',
-              width: isCompactLayout ? '100%' : 'auto',
-            }}
+            className="maze-inline-btn"
+            style={{ width: isCompactLayout ? '100%' : 'auto' }}
           >
             ← Back to Menu
           </button>
 
           {/* ── Encourage message ──────────────────────────────────────────── */}
           {encourageMsg && (
-            <div style={{
-              fontFamily: 'monospace',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              color: '#55ee88',
-              textAlign: 'center',
-            }}>
+            <div className="maze-game-encourage">
               {encourageMsg}
             </div>
           )}
 
           {/* ── Status readout ─────────────────────────────────────────────── */}
-          <div style={{
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            color: '#556677',
-            textAlign: 'center',
-            lineHeight: '1.7',
-            width: '100%',
-            padding: isPhoneLayout ? '0 4px 8px 4px' : 0,
+          <div className="maze-card maze-game-status" style={{
+            padding: isPhoneLayout ? '16px 18px' : '18px 20px',
           }}>
-            <div>Position: ({position.x}, {position.y})</div>
+            <div className="maze-game-status-row"><span>Position</span><strong>({position.x}, {position.y})</strong></div>
             <div>Facing: {facingAngle}°{facingLabel(facingAngle)}</div>
-            <div>Moves: {moveCount}</div>
-            <div>Time: {formatElapsedTime(elapsedSeconds)}</div>
+            <div className="maze-game-status-row"><span>Moves</span><strong>{moveCount}</strong></div>
+            <div className="maze-game-status-row"><span>Time</span><strong>{formatElapsedTime(elapsedSeconds)}</strong></div>
 
             {/* ── Lives display ─────────────────────────────────────────────── */}
             {/*
@@ -971,23 +912,15 @@ export default function GamePage() {
               HOW: String.repeat() creates the right number of each character.
                 Color shifts from green (5 lives) to yellow (3) to red (1).
             */}
-            <div style={{
-              marginTop: '6px',
-              fontSize: '18px',
-              color: lives >= 4 ? '#55dd77' : lives >= 2 ? '#ddaa33' : '#ff4444',
-              letterSpacing: '2px',
+            <div className="maze-game-lives" style={{
+              color: lives >= 4 ? 'var(--maze-accent-success)' : lives >= 2 ? 'var(--maze-accent-warning)' : 'var(--maze-accent-danger)',
             }}>
               {'❤️'.repeat(lives)}{'🖤'.repeat(5 - lives)}
             </div>
 
             {/* ── Checkpoint message ─────────────────────────────────────── */}
             {checkpointMsg && (
-              <div style={{
-                marginTop: '4px',
-                fontSize: '12px',
-                color: '#55dd77',
-                fontWeight: 'bold',
-              }}>
+              <div className="maze-game-checkpoint">
                 {checkpointMsg}
               </div>
             )}

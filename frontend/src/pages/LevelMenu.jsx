@@ -95,72 +95,34 @@ export default function LevelMenu() {
 
   if (isHydrating) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '24px',
-          fontFamily: 'monospace',
-          color: '#99aabb',
-        }}
-      >
+      <div className="maze-page-shell">
         Restoring saved team...
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: '24px',
-        fontFamily: 'monospace',
-      }}
-    >
-      <h1 style={{ fontSize: '24px', color: '#6699cc', marginBottom: '6px' }}>
-        AngleMaze
-      </h1>
+    <div className="maze-page-shell">
+      <h1 className="maze-page-title">AngleMaze</h1>
 
       {hydrateError && (
-        <p style={{ fontSize: '13px', color: '#ff6655', marginBottom: '12px' }}>
-          {hydrateError}
-        </p>
+        <p className="maze-status-error">{hydrateError}</p>
       )}
 
       {team && (
-        <p style={{ fontSize: '13px', color: '#778', marginBottom: '28px' }}>
+        <p className="maze-status-copy">
           Team: {team.members.join(', ')} - Course {team.course}
         </p>
       )}
 
       {isGameFinished && (
-        <div
-          style={{
-            padding: '16px 32px',
-            marginBottom: '24px',
-            border: '2px solid #ffd700',
-            borderRadius: '12px',
-            background: '#2a2200',
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ fontSize: '20px', color: '#ffd700', margin: '0 0 6px 0' }}>
-            Congratulations!
-          </p>
-          <p style={{ fontSize: '13px', color: '#aa9944', margin: 0 }}>
-            You mastered all levels!
-          </p>
+        <div className="maze-card maze-finish-banner">
+          <p className="maze-finish-title">Congratulations!</p>
+          <p className="maze-finish-copy">You mastered all levels!</p>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: '420px' }}>
+      <div className="maze-menu-list">
         {LEVELS.map((level) => {
           const progress = levelProgress[level.num] || { unlocked: false, completed: false };
           const isLocked = !progress.unlocked && !progress.completed;
@@ -170,132 +132,80 @@ export default function LevelMenu() {
           const leaderboardError = leaderboardErrors[level.num];
 
           return (
-            <div key={level.num} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div key={level.num} className="maze-level-wrap">
               <button
                 onClick={() => isPlayable && navigate(`/game/${level.num}`)}
                 disabled={!isPlayable}
-                style={{
-                  padding: '20px 24px',
-                  border: `2px solid ${isPlayable ? level.color : '#333'}`,
-                  borderRadius: '12px',
-                  background: isPlayable ? '#111' : '#0a0a0a',
-                  cursor: isPlayable ? 'pointer' : 'not-allowed',
-                  opacity: isLocked ? 0.4 : 1,
-                  textAlign: 'left',
-                  fontFamily: 'monospace',
-                  transition: 'transform 0.1s',
-                }}
+                className={`maze-level-card${isLocked ? ' is-locked' : ''}${isCompleted ? ' is-completed' : ''}`}
+                style={{ '--level-accent': level.color }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span
-                    style={{
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      color: isPlayable ? level.color : '#555',
-                    }}
-                  >
+                <div className="maze-level-head">
+                  <span className="maze-level-title">
                     Level {level.num} - {level.name}
                   </span>
 
-                  <span style={{ fontSize: '18px' }}>
+                  <span
+                    className={`maze-level-badge${isLocked ? ' is-locked' : ''}${isCompleted ? ' is-completed' : ''}`}
+                  >
                     {isCompleted ? 'OK' : isLocked ? 'LOCK' : 'GO'}
                   </span>
                 </div>
 
-                <p
-                  style={{
-                    fontSize: '12px',
-                    color: '#667',
-                    margin: '8px 0 0 0',
-                  }}
-                >
+                <p className="maze-level-description">
                   {isCompleted ? 'Completed!' : level.description}
                 </p>
               </button>
 
               {isCompleted && (
-                <div
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '12px',
-                    border: '1px solid #22324d',
-                    background: 'rgba(12, 16, 28, 0.94)',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      marginBottom: '10px',
-                    }}
-                  >
+                <div className="maze-card maze-card-soft maze-leaderboard-card">
+                  <div className="maze-leaderboard-head">
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', color: '#9bb9ec' }}>
-                        Winners Chart
-                      </p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#677795' }}>
+                      <p className="maze-leaderboard-title">Winners Chart</p>
+                      <p className="maze-leaderboard-copy">
                         Level {level.num} ranked by moves first, then time, then lives
                       </p>
                     </div>
-                    <span style={{ color: level.color, fontSize: '12px' }}>
-                      Top 10
-                    </span>
+                    <span className="maze-leaderboard-cap">Top 10</span>
                   </div>
 
                   {leaderboardError && (
-                    <p style={{ margin: 0, fontSize: '12px', color: '#ff8a8a' }}>
-                      {leaderboardError}
-                    </p>
+                    <p className="maze-info-copy error">{leaderboardError}</p>
                   )}
 
                   {!leaderboardError && !leaderboard && (
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8797b8' }}>
-                      Loading winners...
-                    </p>
+                    <p className="maze-info-copy">Loading winners...</p>
                   )}
 
                   {!leaderboardError && leaderboard?.winners?.length === 0 && (
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8797b8' }}>
-                      No winners yet for this level.
-                    </p>
+                    <p className="maze-info-copy">No winners yet for this level.</p>
                   )}
 
                   {!leaderboardError && leaderboard?.winners?.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="maze-leaderboard-list">
                       {leaderboard.winners.map((winner) => (
                         <div
                           key={`${level.num}-${winner.teamId}`}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '28px 1fr auto',
-                            gap: '10px',
-                            alignItems: 'center',
-                            padding: '9px 10px',
-                            borderRadius: '10px',
-                            background: winner.teamId === team?.id ? 'rgba(68, 170, 102, 0.16)' : 'rgba(255, 255, 255, 0.04)',
-                            border: winner.teamId === team?.id ? '1px solid rgba(68, 170, 102, 0.45)' : '1px solid rgba(255, 255, 255, 0.06)',
-                          }}
+                          className={`maze-leaderboard-row${winner.teamId === team?.id ? ' is-current' : ''}`}
                         >
-                          <div style={{ fontSize: '13px', color: '#f4d17a' }}>
+                          <div className="maze-rank">
                             #{winner.rank}
                           </div>
                           <div>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#dce6ff' }}>
+                            <p className="maze-winner-name">
                               {winner.members.join(', ')}
                             </p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#7f8ba7' }}>
+                            <p className="maze-winner-subcopy">
                               Course {winner.course}
                             </p>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#8ae6a6' }}>
+                          <div className="maze-winner-stats">
+                            <p>
                               {winner.bestMoves ?? '-'} moves
                             </p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#91a0bd' }}>
+                            <p>
                               {formatDuration(winner.bestTimeSeconds)} time
                             </p>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#91a0bd' }}>
+                            <p>
                               {winner.bestLivesRemaining ?? '-'} lives
                             </p>
                           </div>
