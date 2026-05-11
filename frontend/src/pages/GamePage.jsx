@@ -22,7 +22,7 @@
  *   Scene → React: callbacks stored on gameRef.current (_onCrash, _onReset).
  *   React → Scene: direct method calls via getScene().
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import config from '../game/config.js';
@@ -50,6 +50,8 @@ function getViewportHeight() {
 
   return window.innerHeight;
 }
+
+const MOBILE_INCREMENT_OPTIONS = [10, 30, 45, 100];
 
 export default function GamePage() {
 
@@ -89,6 +91,7 @@ export default function GamePage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [viewportHeight, setViewportHeight] = useState(getViewportHeight);
+  const [mobileQuantity, setMobileQuantity] = useState(0);
 
    /**
    * WHAT: Remaining lives before checkpoint is lost.
@@ -403,34 +406,53 @@ export default function GamePage() {
    *   actually started a move. If goForward returns false (e.g. called mid-
    *   restart), we avoid setting disabled=true with no matching re-enable path.
    */
-  const handleForward = () => {
-    const scene    = getScene();
-    if (!scene) return;
-    const distance = parseFloat(distRef.current.value) || 0;
-    if (distance <= 0) return;
+  const performMotion = (action, quantity) => {
+    const scene = getScene();
+    if (!scene || quantity <= 0) return false;
 
-    const accepted = scene.goForward(distance, (x, y) => {
-      setPosition({ x: Math.round(x), y: Math.round(y) });
-      setDisabled(false);
-    });
+    if (action === 'forward') {
+      const accepted = scene.goForward(quantity, (x, y) => {
+        setPosition({ x: Math.round(x), y: Math.round(y) });
+        setDisabled(false);
+      });
 
-    if (accepted) {
+      if (!accepted) {
+        return false;
+      }
+
       setDisabled(true);
-      setMoveCount(c => c + 1);
+      setMoveCount((current) => current + 1);
+      return true;
+    }
 
-      // WHAT: Clear the distance input after a successful move.
-      //
-      // WHY: Forces the kid to type a NEW distance for the next move.
-      //   Without this, the old value stays and the kid can just mash
-      //   the Forward button without thinking about each step.
-      //   Every move should be a conscious decision: "How far this time?"
-      //
-      // HOW: distRef.current is the actual <input> DOM element.
-      //   Setting .value = '' directly changes what the browser displays.
-      //   This works because we use an UNCONTROLLED input (ref + defaultValue),
-      //   not a controlled one (value + onChange + useState).
-      //   With a controlled input, we'd need to call a setState function
-      //   instead — setting .value directly would be overwritten by React.
+    const newAngle =
+      action === 'left' ? scene.turnLeft(quantity) : scene.turnRight(quantity);
+
+    if (newAngle === undefined) {
+      return false;
+    }
+
+    setFacingAngle(newAngle);
+    setMoveCount((current) => current + 1);
+    return true;
+  };
+
+  const handleForward = () => {
+    const distance = isPhoneLayout
+      ? mobileQuantity
+      : parseFloat(distRef.current.value) || 0;
+    const accepted = performMotion('forward', distance);
+
+    if (!accepted) {
+      return;
+    }
+
+    if (isPhoneLayout) {
+      setMobileQuantity(0);
+      return;
+    }
+
+    if (distRef.current) {
       distRef.current.value = '';
     }
   };
@@ -446,34 +468,39 @@ export default function GamePage() {
    * (hasWon / isMoving / isResetting) — we skip the React state update.
    */
   const handleTurnLeft = () => {
-    const scene   = getScene();
-    if (!scene) return;
-    const degrees  = parseFloat(degreesRef.current.value) || 0;
-    const newAngle = scene.turnLeft(degrees);
-    if (newAngle !== undefined) {
-      setFacingAngle(newAngle);
-      setMoveCount(c => c + 1);
+    const degrees  = isPhoneLayout
+      ? mobileQuantity
+      : parseFloat(degreesRef.current.value) || 0;
+    const accepted = performMotion('left', degrees);
+    if (!accepted) {
+      return;
+    }
 
-      // WHAT: Clear the degrees input after a successful turn.
-      // WHY: Same reason as Forward — the kid should decide the angle
-      //   for each turn deliberately, not reuse the old value by habit.
-      // HOW: Same technique — direct DOM manipulation via the ref.
+    if (isPhoneLayout) {
+      setMobileQuantity(0);
+      return;
+    }
+
+    if (degreesRef.current) {
       degreesRef.current.value = '';
     }
   };
 
   const handleTurnRight = () => {
-    const scene   = getScene();
-    if (!scene) return;
-    const degrees  = parseFloat(degreesRef.current.value) || 0;
-    const newAngle = scene.turnRight(degrees);
-    if (newAngle !== undefined) {
-      setFacingAngle(newAngle);
-      setMoveCount(c => c + 1);
+    const degrees  = isPhoneLayout
+      ? mobileQuantity
+      : parseFloat(degreesRef.current.value) || 0;
+    const accepted = performMotion('right', degrees);
+    if (!accepted) {
+      return;
+    }
 
-      // WHAT: Clear the degrees input after a successful turn.
-      // WHY: Consistent with Forward — every action requires fresh input.
-      // HOW: Direct DOM manipulation via degreesRef.
+    if (isPhoneLayout) {
+      setMobileQuantity(0);
+      return;
+    }
+
+    if (degreesRef.current) {
       degreesRef.current.value = '';
     }
   };
@@ -674,38 +701,96 @@ export default function GamePage() {
         }}>
 
           {/* ── Forward card (green) ───────────────────────────────────────── */}
+          {isPhoneLayout && (
+            <div className="maze-mobile-console">
+              <div className="maze-mobile-display">
+                <span className="maze-mobile-display-label">Quantity</span>
+                <span className="maze-mobile-display-value">{mobileQuantity}</span>
+              </div>
+
+              <div className="maze-mobile-action-row">
+                <button
+                  onClick={handleTurnLeft}
+                  disabled={disabled || mobileQuantity <= 0}
+                  className="maze-mobile-action-btn maze-mobile-action-btn-left"
+                >
+                  <span className="maze-mobile-action-symbol">↺</span>
+                  <span className="maze-mobile-action-label">Turn Left</span>
+                </button>
+                <button
+                  onClick={handleForward}
+                  disabled={disabled || mobileQuantity <= 0}
+                  className="maze-mobile-action-btn maze-mobile-action-btn-forward"
+                >
+                  <span className="maze-mobile-action-symbol">↑</span>
+                  <span className="maze-mobile-action-label">Forward</span>
+                </button>
+                <button
+                  onClick={handleTurnRight}
+                  disabled={disabled || mobileQuantity <= 0}
+                  className="maze-mobile-action-btn maze-mobile-action-btn-right"
+                >
+                  <span className="maze-mobile-action-symbol">↻</span>
+                  <span className="maze-mobile-action-label">Turn Right</span>
+                </button>
+              </div>
+
+              <div className="maze-mobile-chip-row">
+                {MOBILE_INCREMENT_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className="maze-mobile-chip"
+                    onClick={() => setMobileQuantity((current) => current + option)}
+                    disabled={disabled}
+                  >
+                    +{option}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="maze-mobile-chip maze-mobile-chip-clear"
+                  onClick={() => setMobileQuantity(0)}
+                  disabled={disabled || mobileQuantity === 0}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
           <div style={{
-            display: 'flex',
+            display: isPhoneLayout ? 'none' : 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '10px',
-            padding: isPhoneLayout ? '14px 16px' : '14px 24px',
+            padding: '14px 24px',
             border: '1px solid #1a4a1a',
             borderRadius: '10px',
             background: '#0a1f0a',
             width: '100%',
           }}>
             <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              flexWrap: 'wrap',
-              width: '100%',
-            }}>
-              Distance:
-              <input
-                ref={distRef}
-                type="number"
-                defaultValue={50}
-                min={1}
-                step={10}
-                placeholder="px"
-                className="maze-input"
-                style={{ width: '72px' }}
-              />
-              <span>px</span>
-            </label>
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                flexWrap: 'wrap',
+                width: '100%',
+              }}>
+                Distance:
+                <input
+                  ref={distRef}
+                  type="number"
+                  defaultValue={50}
+                  min={1}
+                  step={10}
+                  placeholder="px"
+                  className="maze-input"
+                  style={{ width: '72px' }}
+                />
+                <span>px</span>
+              </label>
 
             <button
               onClick={handleForward}
@@ -718,11 +803,11 @@ export default function GamePage() {
 
           {/* ── Turn card (amber) ──────────────────────────────────────────── */}
           <div style={{
-            display: 'flex',
+            display: isPhoneLayout ? 'none' : 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '10px',
-            padding: isPhoneLayout ? '14px 16px' : '14px 24px',
+            padding: '14px 24px',
             border: '1px solid #4a3800',
             borderRadius: '10px',
             background: '#1a1200',
@@ -750,12 +835,33 @@ export default function GamePage() {
               <span>°</span>
             </label>
 
+            {isPhoneLayout && (
+              <div className="maze-turn-icon-row">
+                <button
+                  onClick={handleTurnLeft}
+                  disabled={disabled}
+                  className="maze-turn-icon-btn maze-turn-icon-btn-left"
+                >
+                  <span className="maze-turn-icon-symbol">↺</span>
+                  <span className="maze-turn-icon-label">Turn Left</span>
+                </button>
+                <button
+                  onClick={handleTurnRight}
+                  disabled={disabled}
+                  className="maze-turn-icon-btn maze-turn-icon-btn-right"
+                >
+                  <span className="maze-turn-icon-symbol">↻</span>
+                  <span className="maze-turn-icon-label">Turn Right</span>
+                </button>
+              </div>
+            )}
+
             <div
               style={{
                 display: 'flex',
                 gap: '12px',
                 width: '100%',
-                flexDirection: isPhoneLayout ? 'column' : 'row',
+                flexDirection: 'row',
               }}
             >
               <button
