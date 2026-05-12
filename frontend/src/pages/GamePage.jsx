@@ -887,6 +887,14 @@ export default function GamePage() {
             ← Back to Menu
           </button>
 
+          <a
+            href="https://www.labolavs.com/category/games"
+            className="maze-inline-btn"
+            style={{ width: isCompactLayout ? '100%' : 'auto' }}
+          >
+            Back to Games
+          </a>
+
           {/* ── Encourage message ──────────────────────────────────────────── */}
           {encourageMsg && (
             <div className="maze-game-encourage">

@@ -134,12 +134,21 @@ export default function Registration() {
         Register your team to start playing
       </p>
 
-      <button
-        onClick={() => setShowInstructions(true)}
-        className="maze-pill-btn"
-      >
-        View Instructions
-      </button>
+      <div className="maze-page-actions">
+        <button
+          onClick={() => setShowInstructions(true)}
+          className="maze-pill-btn"
+        >
+          View Instructions
+        </button>
+
+        <a
+          href="https://www.labolavs.com/category/games"
+          className="maze-pill-btn"
+        >
+          Back to Games
+        </a>
+      </div>
 
       {team && (
         <div

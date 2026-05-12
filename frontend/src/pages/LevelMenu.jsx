@@ -38,9 +38,21 @@ function formatDuration(totalSeconds) {
 
 export default function LevelMenu() {
   const navigate = useNavigate();
-  const { team, levelProgress, isGameFinished, isHydrating, hydrateError } = useGame();
+  const {
+    team,
+    levelProgress,
+    isGameFinished,
+    isHydrating,
+    hydrateError,
+    clearSavedSession,
+  } = useGame();
   const [leaderboards, setLeaderboards] = useState({});
   const [leaderboardErrors, setLeaderboardErrors] = useState({});
+
+  const handlePlayAgain = () => {
+    clearSavedSession();
+    navigate('/');
+  };
 
   useEffect(() => {
     if (!team) return;
@@ -115,10 +127,25 @@ export default function LevelMenu() {
         </p>
       )}
 
+      <a
+        href="https://www.labolavs.com/category/games"
+        className="maze-pill-btn"
+      >
+        Back to Games
+      </a>
+
       {isGameFinished && (
         <div className="maze-card maze-finish-banner">
           <p className="maze-finish-title">Congratulations!</p>
           <p className="maze-finish-copy">You mastered all levels!</p>
+          <div className="maze-actions-row">
+            <button
+              onClick={handlePlayAgain}
+              className="maze-action-btn maze-action-btn-success"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
       )}
 

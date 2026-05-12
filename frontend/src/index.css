@@ -105,16 +105,27 @@ body {
   text-align: center;
 }
 
+.maze-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
 .maze-pill-btn {
-  margin-bottom: 20px;
-  min-height: 38px;
-  padding: 9px 14px;
-  border: 1px solid var(--craft-line);
-  border-radius: var(--craft-radius-pill);
-  background: rgba(216, 231, 255, 0.5);
-  color: var(--craft-blue-deep);
-  font-size: 0.84rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid color-mix(in srgb, var(--craft-blue) 44%, transparent);
+  border-radius: 16px;
+  background: rgba(216, 231, 255, 0.82);
+  color: var(--craft-blue);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
   cursor: pointer;
   transition: transform var(--craft-transition), box-shadow var(--craft-transition), background var(--craft-transition);
 }
@@ -122,6 +133,7 @@ body {
 .maze-pill-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--craft-shadow-sm);
+  background: rgba(216, 231, 255, 1);
 }
 
 .maze-card {
@@ -189,6 +201,9 @@ body {
 }
 
 .maze-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 42px;
   padding: 10px 14px;
   border: 1px solid var(--maze-panel-border);
@@ -198,6 +213,7 @@ body {
   font: inherit;
   font-size: 0.84rem;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
   transition: transform var(--craft-transition), background var(--craft-transition), border-color var(--craft-transition);
 }
@@ -265,8 +281,10 @@ body {
 }
 
 .maze-action-btn-primary {
-  padding: 14px 48px;
-  font-size: 1rem;
+  width: min(100%, 280px);
+  flex: 0 1 auto;
+  padding: 12px 24px;
+  font-size: 0.95rem;
   letter-spacing: 0.02em;
 }
 
