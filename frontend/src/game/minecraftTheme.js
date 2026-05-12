@@ -474,31 +474,29 @@ export function updatePlayerRotation(player, facingAngle, themed, scene) {
 /**
  * startWalkAnimation(player, facingAngle, themed, scene)
  *
- * WHAT: Starts a subtle walking oscillation on the player sprite —
- *   a repeating side-to-side rock (±4°) combined with a small
- *   vertical bob (±1.5px) — that plays continuously while the
- *   player is moving forward.
+ * WHAT: Starts the walking animation on the player sprite.
+ *   Every direction gets a squash/stretch step. Directions without a downward
+ *   component also get a small rotation rock.
  *
- * WHY two oscillations combined?
- *   Rotation alone looks like the character is drunk, not walking.
- *   Vertical bob alone looks like bouncing, not walking.
- *   Together they create a "waddle" — the natural motion of a
- *   Minecraft-style blocky character walking, viewed from above.
+ * WHY combine scale and rotation?
+ *   The squash/stretch gives every direction the same stepping rhythm.
+ *   The rotation rock adds character where Phaser's angle interpolation is safe,
+ *   but is skipped for downward movement because angles near 180/-180 can turn
+ *   a small wobble into a chaotic spin.
  *
  * HOW it handles facing angle:
- *   The rock oscillates RELATIVE to the current facing direction.
- *   If the player faces 90° (up), the Phaser angle is 0° (90 - 90).
- *   The tween rocks between -4° and +4° around that base angle.
- *   This works at any facing direction automatically because the
- *   tween target is baseAngle ± offset, not an absolute value.
+ *   The visual pose is relative to the current facing direction.
+ *   If the player faces 90 degrees (up), the Phaser angle is 0 degrees.
+ *   Safe directions rock between -4 and +4 degrees around that base angle.
+ *   Downward directions keep the base angle and use only squash/stretch.
  *
  * HOW it loops:
  *   yoyo: true makes the tween reverse after reaching the target.
  *   repeat: -1 makes it loop forever (until manually stopped).
- *   Together: the sprite rocks left → right → left → right... endlessly.
+ *   Together: the sprite steps continuously until stopWalkAnimation() runs.
  *
  * PERFORMANCE:
- *   Two tweens (rotation + position) running at 60fps is trivial for
+ *   Two tweens (scale + optional rotation) running at 60fps is trivial for
  *   Phaser's tween manager. Each tween is a single property interpolation
  *   — no texture swaps, no draw call changes, no GPU impact.
  *
@@ -533,6 +531,25 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
   // WHAT: The "neutral" angle the sprite should rest at when not oscillating.
   // HOW: Same conversion as updatePlayerRotation: phaserAngle = 90 - facingAngle.
   const baseAngle = getSpriteBaseAngle(facingAngle);
+  const hasDownwardComponent = facingAngle > 180 && facingAngle < 360;
+
+  player._walkBaseScaleX = player.scaleX;
+  player._walkBaseScaleY = player.scaleY;
+
+  player._walkTweenScale = scene.tweens.add({
+    targets: player,
+    scaleX: player._walkBaseScaleX * 1.08,
+    scaleY: player._walkBaseScaleY * 0.92,
+    duration: 105,
+    ease: 'Sine.easeInOut',
+    yoyo: true,
+    repeat: -1,
+  });
+
+  if (hasDownwardComponent) {
+    player.setAngle(baseAngle);
+    return;
+  }
 
   // ── Rotation rock (±4° oscillation) ───────────────────────────────────
   //
@@ -555,58 +572,39 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
   //   static (tweening toward the first offset) — a subtle delay that
   //   makes the animation feel laggy.
 
-  // ±6° rotation — the sweet spot for a 40px sprite.
+  // ±4° rotation — now paired with squash/stretch for a consistent step.
   //   ±4° was invisible (rounded away by pixel-art filtering).
   //   ±10° was too dramatic (looked like falling, not walking).
   //   ±6° moves the sprite corners by ~4px — clearly visible as a
   //   gentle waddle without looking broken.
-  player.setAngle(baseAngle - 6);
+  player.setAngle(baseAngle - 4);
 
   player._walkTweenRotation = scene.tweens.add({
     targets: player,
-    angle: baseAngle + 6,       // 12° total swing
-    duration: 130,              // slightly relaxed pace
+    angle: baseAngle + 4,       // 8° total swing
+    duration: 105,
     ease: 'Sine.easeInOut',
     yoyo: true,
     repeat: -1,
   });
 
-  // ── Vertical bob (±1.5px oscillation) ─────────────────────────────────
+  // ── Shared squash/stretch step ─────────────────────────────────
   //
-  // WHAT: Oscillates scaleX and scaleY slightly to create a "breathing"
-  //   or "bouncing" effect that simulates the weight shift of walking.
+  // WHAT: All directions use the scale tween above to create a visible step.
   //
-  // WHY scale instead of y position?
-  //   The previous version tweened player.y directly. But Phaser's physics
-  //   engine ALSO sets player.y every frame based on velocity. The two
-  //   systems fought over the same property — the tween won, pinning the
-  //   player in place and preventing all forward movement.
-  //   Scale (scaleX, scaleY) is purely visual — physics never touches it.
-  //   So there's no conflict.
+  // WHY scale instead of y position or rotation-only?
+  //   The visible sprite is separate from the invisible physics body, so scale
+  //   is a safe visual-only cue. It also gives downward movement the same
+  //   stepping rhythm as other directions without touching Phaser's risky
+  //   180/-180 rotation boundary.
   //
   // HOW it looks:
-  //   The sprite slightly squishes horizontally and stretches vertically,
-  //   then reverses. Combined with the rotation rock, it creates a
-  //   convincing "waddle" at the Minecraft pixel-art scale.
+  //   The sprite slightly widens and shortens, then reverses. Safe directions
+  //   also get a small rotation rock; downward directions use scale only.
   //
   // WHY store original scales?
   //   setDisplaySize changes scaleX/scaleY internally. We need to restore
   //   the exact values when the animation stops, not assume they're 1.0.
-  
-  // NOTE: No squash-stretch (scaleX/scaleY) tween.
-  //
-  // WHY it was removed:
-  //   Oscillating scaleY interferes with Arcade Physics body bounds
-  //   during downward movement. The body size fluctuates every frame,
-  //   causing jittery collision resolution that makes the sprite bounce
-  //   chaotically when moving in the +Y direction.
-  //
-  //   Left/right/up movement looked fine because the scale oscillation
-  //   was perpendicular to travel (left/right) or dampened symmetrically (up).
-  //   But downward movement amplified the jitter.
-  //
-  // The ±6° rotation rock alone is sufficient for a convincing walk
-  // animation at this sprite scale. No scale changes needed.
 }
 
 
@@ -623,8 +621,8 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
  *   at a tilted angle — looking broken.
  *
  * HOW it cleans up:
- *   1. Stop both tweens (rotation and bob).
- *   2. Restore Y to the stored original value.
+ *   1. Stop active walking tweens (rotation and/or scale).
+ *   2. Restore the original scale if a scale step was active.
  *   3. Do NOT reset angle here — the caller (goForward callback or
  *      _onWallHit) will call setPreviewAngle() which resets the angle
  *      via updatePlayerRotation(). Setting it here too would cause a
@@ -639,6 +637,11 @@ export function stopWalkAnimation(player, facingAngle, themed) {
     player._walkTweenRotation = null;
   }
 
+  if (player._walkTweenScale) {
+    player._walkTweenScale.stop();
+    player._walkTweenScale = null;
+  }
+
   // Also stop any smooth-turn tween so nothing keeps nudging the sprite
   // after we restore its neutral facing.
   if (player._rotationTween) {
@@ -650,10 +653,16 @@ export function stopWalkAnimation(player, facingAngle, themed) {
     player.setAngle(getSpriteBaseAngle(facingAngle));
   }
 
-  // No squash-stretch tween to stop — it was removed because it
-  // interfered with physics during downward movement.
-  // Only the rotation tween (stopped above) needs cleanup.
-  
+  if (
+    typeof player?._walkBaseScaleX === 'number'
+    && typeof player?._walkBaseScaleY === 'number'
+    && player?.setScale
+  ) {
+    player.setScale(player._walkBaseScaleX, player._walkBaseScaleY);
+    player._walkBaseScaleX = null;
+    player._walkBaseScaleY = null;
+  }
+
 }
 
 /**
