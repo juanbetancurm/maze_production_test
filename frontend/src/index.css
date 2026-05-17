@@ -303,6 +303,13 @@ body {
   font-size: 0.9rem;
 }
 
+.maze-status-success {
+  margin-bottom: 16px;
+  color: var(--maze-accent-success);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .maze-status-copy {
   margin-bottom: 28px;
   color: var(--craft-ink-soft);
@@ -627,6 +634,177 @@ body {
   font-weight: 700;
 }
 
+.maze-admin-page {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.maze-admin-header {
+  width: min(100%, 1120px);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.maze-admin-header .maze-page-title,
+.maze-admin-header .maze-page-subtitle {
+  text-align: left;
+}
+
+.maze-admin-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.maze-admin-login {
+  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+}
+
+.maze-admin-grid {
+  width: min(100%, 1120px);
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.maze-admin-panel {
+  width: 100%;
+  padding: 20px;
+}
+
+.maze-admin-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.maze-admin-muted {
+  color: var(--craft-ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.maze-admin-team-list,
+.maze-admin-detail,
+.maze-admin-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.maze-admin-team-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--maze-panel-border);
+  border-radius: 18px;
+  background: rgba(216, 231, 255, 0.24);
+  color: var(--craft-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--craft-transition), border-color var(--craft-transition), background var(--craft-transition);
+}
+
+.maze-admin-team-row:hover,
+.maze-admin-team-row.is-selected {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--craft-blue) 32%, transparent);
+  background: rgba(216, 231, 255, 0.48);
+}
+
+.maze-admin-team-row strong,
+.maze-admin-team-row small {
+  display: block;
+}
+
+.maze-admin-team-row strong {
+  margin-bottom: 3px;
+  font-size: 0.95rem;
+}
+
+.maze-admin-team-row small,
+.maze-admin-team-stats small {
+  color: var(--craft-ink-soft);
+  font-size: 0.82rem;
+}
+
+.maze-admin-team-stats {
+  text-align: right;
+}
+
+.maze-admin-detail-block {
+  padding: 14px;
+  border: 1px solid var(--maze-panel-border);
+  border-radius: 18px;
+  background: rgba(216, 231, 255, 0.2);
+}
+
+.maze-admin-detail-title {
+  margin-bottom: 8px;
+  color: var(--craft-blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.maze-admin-id {
+  margin-top: 8px;
+  color: var(--craft-ink-soft);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.maze-admin-record {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.maze-admin-record strong,
+.maze-admin-record span,
+.maze-admin-record small {
+  font-size: 0.86rem;
+}
+
+.maze-admin-record span {
+  color: var(--maze-accent-success);
+  font-weight: 700;
+  text-align: right;
+}
+
+.maze-admin-record small {
+  color: var(--craft-ink-soft);
+}
+
+[data-theme="dark"] .maze-admin-team-row,
+[data-theme="dark"] .maze-admin-detail-block {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .maze-admin-record {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 [data-theme="dark"] .maze-pill-btn {
   background: rgba(96, 165, 250, 0.08);
 }
@@ -806,6 +984,21 @@ body {
   }
 }
 
+@media (max-width: 900px) {
+  .maze-admin-header,
+  .maze-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .maze-admin-header {
+    flex-direction: column;
+  }
+
+  .maze-admin-header-actions {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 520px) {
   .maze-actions-row,
   .maze-field-row {
@@ -828,6 +1021,16 @@ body {
   }
 
   .maze-winner-stats {
+    text-align: left;
+  }
+
+  .maze-admin-team-row,
+  .maze-admin-record {
+    grid-template-columns: 1fr;
+  }
+
+  .maze-admin-team-stats,
+  .maze-admin-record span {
     text-align: left;
   }
 }

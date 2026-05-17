@@ -11,6 +11,7 @@ import { useGame } from './context/GameContext';
 import Registration from './pages/Registration';
 import LevelMenu from './pages/LevelMenu';
 import GamePage from './pages/GamePage';
+import AdminPage from './pages/AdminPage';
 
 function RequireTeam({ children }) {
   const { team, isHydrating } = useGame();
@@ -45,6 +46,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Registration />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route
         path="/menu"
         element={(

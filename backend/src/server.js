@@ -6,6 +6,7 @@ const cors = require("cors");
 const healthRouter = require("./routes/health");
 const teamsRouter = require("./routes/teams");
 const progressRouter = require("./routes/progress");
+const adminRouter = require("./routes/admin");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +47,7 @@ app.use(express.json());
 app.use("/api/health", healthRouter);
 app.use("/api/teams", teamsRouter);
 app.use("/api/progress", progressRouter);
+app.use("/api/admin", adminRouter);
 
 // Start server
 app.listen(PORT, "0.0.0.0", () => {

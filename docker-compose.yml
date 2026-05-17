@@ -22,6 +22,7 @@ services:
       PORT: ${PORT}
       CORS_ORIGIN: ${CORS_ORIGIN}
       NODE_ENV: ${NODE_ENV}
+      ADMIN_SECRET: ${ADMIN_SECRET}
     depends_on:
       db:
         condition: service_healthy
