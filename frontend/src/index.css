@@ -845,6 +845,7 @@ body {
 .maze-game-layout {
   display: flex;
   align-items: flex-start;
+  justify-content: center;
   width: 100%;
 }
 
@@ -932,6 +933,14 @@ body {
   font-size: 1.15rem;
   letter-spacing: 2px;
   text-align: center;
+}
+
+.maze-game-lives-active {
+  color: #c51f35;
+}
+
+.maze-game-lives-lost {
+  color: #718087;
 }
 
 .maze-game-checkpoint {
@@ -1820,7 +1829,7 @@ body:has(.maze-experience) {
   align-items: center;
   gap: 16px;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1800px;
   margin-bottom: 16px;
 }
 
@@ -1859,8 +1868,10 @@ body:has(.maze-experience) {
 }
 
 .maze-experience .maze-game-controls {
-  flex: 1;
-  gap: 12px;
+  flex: 0 0 clamp(224px, 20vw, 280px);
+  gap: 8px;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
 .maze-experience .maze-game-card {
@@ -2041,8 +2052,8 @@ body:has(.maze-experience) {
 
 @media (min-width: 981px) and (max-width: 1151px) {
   .maze-game-layout {
-    width: min(100%, 800px);
-    flex-wrap: wrap;
+    width: 100%;
+    flex-wrap: nowrap;
   }
 
   .maze-game-layout .maze-game-controls {
@@ -2052,7 +2063,60 @@ body:has(.maze-experience) {
 
 @media (max-width: 980px) {
   .maze-game-header {
-    max-width: 620px;
+    max-width: 920px;
+  }
+}
+
+@media (min-width: 1152px) {
+  .maze-game-header {
+    margin-bottom: 0;
+  }
+
+  .maze-game-header .maze-page-title {
+    font-size: clamp(1.85rem, 2.75vw, 2.1rem);
+    line-height: 1;
+  }
+
+  .maze-experience .maze-game-card {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .maze-experience .maze-game-label,
+  .maze-experience .maze-game-unit {
+    font-size: 0.76rem;
+  }
+
+  .maze-experience .maze-btn-forward,
+  .maze-experience .maze-btn-turn,
+  .maze-experience .maze-btn-reset,
+  .maze-experience .maze-protractor-toggle {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
+  .maze-experience .maze-btn-turn {
+    padding: 8px 6px;
+    font-size: 0.84rem;
+  }
+
+  .maze-experience .maze-game-status-row {
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+
+  .maze-experience .maze-game-lives {
+    margin-top: 5px;
+    padding-top: 6px;
+    font-size: 1.3rem;
+    letter-spacing: 3px;
+  }
+}
+
+@media (max-width: 1151px) {
+  .maze-experience .maze-game-controls {
+    flex: 0 0 auto;
+    width: 100%;
   }
 }
 

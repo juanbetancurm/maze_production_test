@@ -41,6 +41,12 @@ function getViewportWidth() {
     return 1280;
   }
 
+  // clientWidth excludes a classic vertical scrollbar; match the actual layout
+  // width so the scaled canvas never spills outside its shell by scrollbar width.
+  if (typeof document !== 'undefined' && document.documentElement?.clientWidth > 0) {
+    return document.documentElement.clientWidth;
+  }
+
   return window.innerWidth;
 }
 
@@ -53,20 +59,35 @@ function getViewportHeight() {
 }
 
 function getResponsiveGameScale(width, height) {
-  const compact = width <= 980;
   const phone = width <= 640;
+  const compact = width <= 1151;
   const shortLandscape = compact && width > height && height <= 500;
-  const maxCanvasWidth = phone
-    ? Math.max(280, Math.min(width - 32, 420))
-    : compact
-      ? Math.max(360, Math.min(width - 48, 620))
-      : 800;
-  const maxCanvasHeight = compact
-    ? shortLandscape
-      ? Math.max(300, height - 80)
-      : Math.max(220, height - (phone ? 360 : 280))
-    : Math.max(320, height - 140);
-  return Math.min(1, maxCanvasWidth / 800, maxCanvasHeight / 600);
+  let maxCanvasWidth;
+  let maxCanvasHeight;
+
+  if (phone) {
+    maxCanvasWidth = Math.max(240, Math.min(width - 32, 420));
+    maxCanvasHeight = shortLandscape
+      ? Math.max(240, height - 80)
+      : Math.max(240, height - 360);
+  } else if (compact) {
+    // Tablets use a full-width board, with the control console below it.
+    maxCanvasWidth = Math.max(360, Math.min(width - 32, 920));
+    maxCanvasHeight = shortLandscape
+      ? Math.max(240, height - 80)
+      : Math.min(900, Math.max(360, height - 24));
+  } else {
+    // Reserve a compact right rail, then let the board use the remaining width.
+    // The Phaser world stays 800x600; only its display wrapper is scaled.
+    const controlsWidth = Math.max(224, Math.min(280, width * 0.2));
+    const pageContentWidth = Math.max(400, Math.min(width, 1800) - 32);
+    maxCanvasWidth = Math.min(1200, pageContentWidth - controlsWidth - 16);
+    // Keep the full 4:3 board inside its shell while allowing a small amount of
+    // page scrolling on short desktops instead of shrinking the maze to fit.
+    maxCanvasHeight = Math.min(900, Math.max(360, height - 60));
+  }
+
+  return Math.min(1.5, maxCanvasWidth / 800, maxCanvasHeight / 600);
 }
 
 const MOBILE_INCREMENT_OPTIONS = [10, 30, 45, 100];
@@ -201,6 +222,7 @@ export default function GamePage() {
       }
     }
 
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -584,7 +606,7 @@ export default function GamePage() {
     );
   }
 
-  const isCompactLayout = viewportWidth <= 980;
+  const isCompactLayout = viewportWidth <= 1151;
   const isPhoneLayout = viewportWidth <= 640;
   const gameScale = getResponsiveGameScale(viewportWidth, viewportHeight);
   const gameViewportWidth = Math.round(800 * gameScale);
@@ -629,9 +651,9 @@ export default function GamePage() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '16px',
+      padding: isCompactLayout ? '16px' : '0 16px',
       width: '100%',
-      maxWidth: isCompactLayout ? '100%' : '1280px',
+      maxWidth: isCompactLayout ? '100%' : '1800px',
       margin: '0 auto',
     }}>
 
@@ -657,8 +679,8 @@ export default function GamePage() {
       */}
       <div className="maze-game-layout" style={{
         flexDirection: isCompactLayout ? 'column' : 'row',
-        gap: isCompactLayout ? '18px' : '24px',
-        maxWidth: isCompactLayout ? `${gameViewportWidth}px` : '1120px',
+        gap: isCompactLayout ? '18px' : '16px',
+        maxWidth: isCompactLayout ? `${gameViewportWidth}px` : '100%',
       }}>
 
         {/* ── Left side: Phaser game canvas ────────────────────────────────── */}
@@ -714,7 +736,7 @@ export default function GamePage() {
             minWidth prevents the controls from collapsing too narrow.
         */}
         <div className="maze-game-controls" style={{
-          minWidth: isCompactLayout ? '100%' : '200px',
+          minWidth: isCompactLayout ? '100%' : '0',
           width: isCompactLayout ? '100%' : 'auto',
         }}>
 
@@ -948,7 +970,7 @@ export default function GamePage() {
 
           {/* ── Status readout ─────────────────────────────────────────────── */}
           <div className="maze-card maze-game-status" style={{
-            padding: isPhoneLayout ? '16px 18px' : '18px 20px',
+            padding: isPhoneLayout ? '16px 18px' : isCompactLayout ? '14px 16px' : '12px',
           }}>
             <div className="maze-game-status-row"><span>Position</span><strong>({position.x}, {position.y})</strong></div>
             <div className="maze-game-status-row"><span>Facing</span><strong>{facingAngle}°{facingLabel(facingAngle)}</strong></div>
@@ -964,10 +986,9 @@ export default function GamePage() {
               HOW: String.repeat() creates the right number of each character.
                 Color shifts from green (5 lives) to yellow (3) to red (1).
             */}
-            <div className="maze-game-lives" role="img" aria-label={`${lives} of 5 lives remaining`} style={{
-              color: lives >= 4 ? 'var(--maze-accent-success)' : lives >= 2 ? 'var(--maze-accent-warning)' : 'var(--maze-accent-danger)',
-            }}>
-              <span aria-hidden="true">{'♥'.repeat(lives)}{'♡'.repeat(5 - lives)}</span>
+            <div className="maze-game-lives" role="img" aria-label={`${lives} of 5 lives remaining`}>
+              <span className="maze-game-lives-active" aria-hidden="true">{'♥'.repeat(lives)}</span>
+              <span className="maze-game-lives-lost" aria-hidden="true">{'♡'.repeat(5 - lives)}</span>
             </div>
 
             {/* ── Checkpoint message ─────────────────────────────────────── */}

@@ -14,13 +14,13 @@ export const GOLEM_TEXTURE_KEY = VISUAL_TEXTURES.golem;
  * Handle for motion preference and owned image cleanup.
  */
 export function GolemView(scene, positions, { reducedMotion = false } = {}) {
-  const safePositions = positions ?? [];
-  const shadows = safePositions.flatMap(({ x, y }) => [
+  const anchors = (positions ?? []).map(({ x, y }) => ({ x, y }));
+  const shadowGroups = anchors.map(({ x, y }) => [
     scene.add.ellipse(x + 2, y + 24, 92, 30, 0x111a12, 0.09).setDepth(3.1),
     scene.add.ellipse(x + 1, y + 25, 70, 21, 0x111a12, 0.15).setDepth(3.4),
     scene.add.ellipse(x, y + 29, 44, 12, 0x111a12, 0.24).setDepth(3.7),
   ]);
-  const images = safePositions.map(({ x, y }) => {
+  const images = anchors.map(({ x, y }) => {
     const image = scene.add.image(x, y, GOLEM_TEXTURE_KEY)
       .setDisplaySize(100, 100)
       .setAngle(0)
@@ -30,53 +30,85 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
   });
   const facingAngles = images.map(() => 0);
   const baseScales = images.map(({ scaleX, scaleY }) => ({ scaleX, scaleY }));
-  const tweens = images.map(() => null);
+  const baseShadowStyles = shadowGroups.map(group => group.map(({ scaleX, scaleY, alpha }) => ({
+    scaleX,
+    scaleY,
+    alpha,
+  })));
+  const idleStates = images.map(() => ({ lift: 0 }));
+  const idleTweens = images.map(() => null);
 
   let destroyed = false;
 
-  const stopBreathing = () => {
-    tweens.forEach((tween, index) => {
-      tween?.stop();
-      tweens[index] = null;
-      const image = images[index];
-      if (image.active) image.setScale(baseScales[index].scaleX, baseScales[index].scaleY);
+  const applyIdlePose = (index) => {
+    const lift = idleStates[index].lift;
+    const image = images[index];
+    if (image.active) {
+      const { x, y } = anchors[index];
+      image.x = x;
+      image.y = y - lift * 1.25;
+      image.setScale(
+        baseScales[index].scaleX * (1 + lift * 0.012),
+        baseScales[index].scaleY * (1 + lift * 0.018),
+      );
+    }
+
+    shadowGroups[index].forEach((shadow, shadowIndex) => {
+      if (!shadow.active) return;
+      const base = baseShadowStyles[index][shadowIndex];
+      // A lifted body casts a slightly broader, softer contact shadow.
+      shadow.setScale(base.scaleX * (1 + lift * 0.055), base.scaleY * (1 + lift * 0.04));
+      shadow.setAlpha(base.alpha * (1 - lift * 0.16));
     });
   };
 
-  const startBreathing = () => {
+  const stopIdleMotion = () => {
+    idleTweens.forEach((tween, index) => {
+      tween?.stop();
+      idleTweens[index] = null;
+      idleStates[index].lift = 0;
+      applyIdlePose(index);
+    });
+  };
+
+  const startIdleMotion = () => {
     if (destroyed || reducedMotion) return;
     images.forEach((image, index) => {
-      const { scaleX, scaleY } = baseScales[index];
-      tweens[index] = scene.tweens.add({
-        targets: image,
-        scaleX: scaleX * 1.02,
-        scaleY: scaleY * 1.02,
-        duration: 1400,
+      idleStates[index].lift = 0;
+      applyIdlePose(index);
+      idleTweens[index] = scene.tweens.add({
+        targets: idleStates[index],
+        lift: 1,
+        duration: 1650,
         yoyo: true,
         repeat: -1,
-        delay: index * 170,
+        delay: index * 210,
         ease: 'Sine.easeInOut',
+        onUpdate: () => applyIdlePose(index),
       });
     });
   };
 
-  startBreathing();
+  startIdleMotion();
 
   return {
     get count() { return images.length; },
-    get shadowCount() { return safePositions.length; },
-    get renderOrder() { return images.map(({ x, y, depth }) => ({ x, y, depth })); },
+    get shadowCount() { return shadowGroups.length; },
+    get renderOrder() {
+      return images.map(({ depth }, index) => ({ ...anchors[index], depth }));
+    },
     get facingAngles() { return facingAngles.map(angle => angle * 180 / Math.PI); },
-    /** Rotate only the authored golem art; its shadow and physical footprint stay fixed. */
+    /** Visual lifting never changes the fixed logical anchor used for facing or depth. */
     facePosition(playerX, playerY, deltaMs = 16) {
       if (destroyed || !Number.isFinite(playerX) || !Number.isFinite(playerY)) return;
       images.forEach((image, index) => {
-        const dx = playerX - image.x;
-        const dy = playerY - image.y;
+        const { x, y } = anchors[index];
+        const dx = playerX - x;
+        const dy = playerY - y;
         if (dx * dx + dy * dy < 0.01) return;
 
         // The static golem artwork's eyes face down-screen at zero rotation.
-        const target = angleFacingPoint(image.x, image.y, playerX, playerY);
+        const target = angleFacingPoint(x, y, playerX, playerY);
         facingAngles[index] = easeAngleToward(facingAngles[index], target, deltaMs, { reducedMotion });
         image.rotation = facingAngles[index];
       });
@@ -85,16 +117,16 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
       if (destroyed || reducedMotion === Boolean(reduced)) return;
       reducedMotion = Boolean(reduced);
       if (reducedMotion) {
-        stopBreathing();
+        stopIdleMotion();
       } else {
-        startBreathing();
+        startIdleMotion();
       }
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      stopBreathing();
-      shadows.forEach(shadow => shadow.destroy());
+      stopIdleMotion();
+      shadowGroups.flat().forEach(shadow => shadow.destroy());
       images.forEach(image => image.destroy());
     },
   };
