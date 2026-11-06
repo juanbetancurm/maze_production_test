@@ -82,9 +82,10 @@ function getResponsiveGameScale(width, height) {
     const controlsWidth = Math.max(224, Math.min(280, width * 0.2));
     const pageContentWidth = Math.max(400, Math.min(width, 1800) - 32);
     maxCanvasWidth = Math.min(1200, pageContentWidth - controlsWidth - 16);
-    // Keep the full 4:3 board inside its shell while allowing a small amount of
-    // page scrolling on short desktops instead of shrinking the maze to fit.
-    maxCanvasHeight = Math.min(900, Math.max(360, height - 60));
+    // Desktop prioritizes the available row width. On short windows, the whole
+    // 4:3 board remains in its shell and the document scrolls vertically instead
+    // of shrinking the maze and leaving unused horizontal space.
+    maxCanvasHeight = 900;
   }
 
   return Math.min(1.5, maxCanvasWidth / 800, maxCanvasHeight / 600);

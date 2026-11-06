@@ -322,6 +322,41 @@ try {
     }
     return { state, inventory: await cdp.evaluate('anglemazeBaseline.collisionInventory()') };
   });
+  await scenario('level2-golem-weighted-idle', async () => {
+    await fixture(2);
+    const sample = () => cdp.evaluate(`(() => {
+      const s = anglemazeBaseline.scene();
+      const golems = s.children.list
+        .filter(object => object.texture?.key === 'premium.golem.static')
+        .map(({ x, y, scaleX, scaleY }) => ({ x, y, scaleX, scaleY }));
+      const contactShadows = s.children.list
+        .filter(object => object.type === 'Ellipse' && object.depth === 3.7)
+        .map(({ x, y, scaleX, scaleY, alpha }) => ({ x, y, scaleX, scaleY, alpha }));
+      return {
+        golems,
+        contactShadows,
+        anchors: s.golemView.renderOrder,
+        collisionAnchors: s.golemCollisionShapes.map(({ x, y }) => ({ x, y })),
+        player: { x: s.player.x, y: s.player.y },
+      };
+    })()`);
+    const grounded = await sample();
+    await sleep(850);
+    const lifted = await sample();
+    const maxBodyLift = Math.max(...grounded.golems.map((golem, index) =>
+      Math.abs(golem.y - lifted.golems[index].y)));
+    const maxShadowAlphaChange = Math.max(...grounded.contactShadows.map((shadow, index) =>
+      Math.abs(shadow.alpha - lifted.contactShadows[index].alpha)));
+    if (grounded.golems.length !== 4 || maxBodyLift < 0.1 || maxShadowAlphaChange < 0.001 ||
+        JSON.stringify(grounded.anchors) !== JSON.stringify(lifted.anchors) ||
+        JSON.stringify(grounded.collisionAnchors) !== JSON.stringify(lifted.collisionAnchors) ||
+        grounded.player.x !== lifted.player.x || grounded.player.y !== lifted.player.y) {
+      throw new Error(`Expected visible weighted idle with stable gameplay anchors: ${JSON.stringify({
+        maxBodyLift, maxShadowAlphaChange, grounded, lifted,
+      })}`);
+    }
+    return { maxBodyLift, maxShadowAlphaChange, anchorsRemainFixed: true, playerRemainsFixed: true };
+  });
   await scenario('level2-actor-depth-sorting', async () => {
     const upper = await fixture(2);
     await shot('scene-level2-actor-depth-sorting');
@@ -547,6 +582,9 @@ try {
     await navigate('http://127.0.0.1:4178/game/2');
     await waitForReactGameReady();
     const viewports = [
+      { name: 'desktop-short-1352x557', width: 1352, height: 557, mobile: false },
+      { name: 'desktop-1315x755', width: 1315, height: 755, mobile: false },
+      { name: 'desktop-1440x900', width: 1440, height: 900, mobile: false },
       { name: 'phone-360x800', width: 360, height: 800, mobile: true },
       { name: 'tablet-768x1024', width: 768, height: 1024, mobile: false },
       { name: 'phone-landscape-844x390', width: 844, height: 390, mobile: true },
@@ -559,21 +597,54 @@ try {
         deviceScaleFactor: 1,
         mobile: viewport.mobile,
       });
-      await sleep(300);
+      await cdp.evaluate('window.dispatchEvent(new Event("resize"))');
+      await sleep(600);
       const layout = await cdp.evaluate(`(() => {
         const canvas = document.querySelector('#game-container canvas');
         const rect = canvas?.getBoundingClientRect();
+        const controls = document.querySelector('.maze-game-controls');
+        const controlsRect = controls?.getBoundingClientRect();
+        const shellRect = document.querySelector('.maze-canvas-shell')?.getBoundingClientRect();
+        const wrapper = document.querySelector('.maze-canvas-shell')?.firstElementChild;
+        const wrapperRect = wrapper?.getBoundingClientRect();
+        const activeHearts = document.querySelector('.maze-game-lives-active');
+        const lostHearts = document.querySelector('.maze-game-lives-lost');
         return {
           viewport: { width: innerWidth, height: innerHeight },
           canvasCount: document.querySelectorAll('#game-container canvas').length,
           documentWidth: document.documentElement.scrollWidth,
+          documentHeight: document.documentElement.scrollHeight,
           canvas: rect ? { left: rect.left, right: rect.right, width: rect.width, height: rect.height } : null,
+          controls: controlsRect ? { left: controlsRect.left, right: controlsRect.right,
+            top: controlsRect.top, width: controlsRect.width, height: controlsRect.height } : null,
+          shell: shellRect ? { left: shellRect.left, right: shellRect.right, top: shellRect.top,
+            bottom: shellRect.bottom, width: shellRect.width, height: shellRect.height } : null,
+          wrapper: wrapperRect ? { left: wrapperRect.left, right: wrapperRect.right,
+            width: wrapperRect.width, height: wrapperRect.height,
+            cssWidth: getComputedStyle(wrapper).width, transform: getComputedStyle(wrapper).transform } : null,
+          activeHeartsColor: activeHearts ? getComputedStyle(activeHearts).color : null,
+          lostHeartsColor: lostHearts ? getComputedStyle(lostHearts).color : null,
           ready: document.querySelector('[data-game-ready="true"]') !== null,
         };
       })()`);
       const pass = layout.canvasCount === 1 && layout.ready && layout.canvas?.width > 0 &&
         layout.canvas.left >= -1 && layout.canvas.right <= viewport.width + 1 &&
           layout.documentWidth <= viewport.width + 1 &&
+          (viewport.name !== 'desktop-short-1352x557' ||
+            (layout.canvas.width >= 1000 && layout.controls?.width <= 280 &&
+              layout.shell.bottom <= layout.documentHeight + 1 &&
+              layout.canvas.width / (layout.canvas.width + layout.controls.width +
+                Math.max(0, layout.controls.left - layout.shell.right)) >= 0.75)) &&
+          (viewport.name !== 'desktop-1315x755' ||
+            (layout.canvas.width >= 900 && layout.controls?.width <= 280 &&
+              layout.shell.bottom <= layout.documentHeight + 1 &&
+              layout.canvas.width / (layout.canvas.width + layout.controls.width +
+                Math.max(0, layout.controls.left - layout.shell.right)) >= 0.75)) &&
+          (!viewport.name.startsWith('desktop-') || layout.shell.bottom <= layout.documentHeight + 1) &&
+          (Math.abs(layout.canvas.width - layout.shell.width) < 2 &&
+            Math.abs(layout.canvas.height - (layout.shell.height - 2)) < 2) &&
+          (!viewport.name.startsWith('desktop-') || layout.activeHeartsColor === 'rgb(197, 31, 53)') &&
+          (!viewport.name.startsWith('tablet-') || layout.controls?.top >= layout.shell?.bottom - 1) &&
           (viewport.name !== 'phone-landscape-844x390' ||
             (layout.canvas.width >= 400 && layout.canvas.height >= 300));
       results.push({ ...viewport, ...layout, pass });
@@ -583,6 +654,87 @@ try {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await sleep(250);
     return results;
+  });
+  await scenario('react-resized-desktop-controls', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1315, height: 755, deviceScaleFactor: 1, mobile: false,
+    });
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l2')");
+    await navigate('http://127.0.0.1:4178/game/2');
+    await waitForReactGameReady();
+    const readStatus = () => cdp.evaluate(`(() => {
+      const text = document.querySelector('.maze-game-status')?.innerText ?? '';
+      return {
+        position: text.match(/Position\\s+([^\\n]+)/)?.[1]?.trim(),
+        facing: text.match(/Facing\\s+([^\\n]+)/)?.[1]?.trim(),
+        moves: text.match(/Moves\\s+([^\\n]+)/)?.[1]?.trim(),
+        canvas: (() => {
+          const rect = document.querySelector('#game-container canvas')?.getBoundingClientRect();
+          return rect ? { width: rect.width, height: rect.height } : null;
+        })(),
+      };
+    })()`);
+    const before = await readStatus();
+    await cdp.evaluate("document.querySelector('.maze-btn-forward')?.click()");
+    const deadline = Date.now() + 3000;
+    let moved = await readStatus();
+    while (Date.now() < deadline && (moved.position === before.position || moved.moves !== '1')) {
+      await sleep(60);
+      moved = await readStatus();
+    }
+    await cdp.evaluate("document.querySelectorAll('.maze-btn-turn')[1]?.click()");
+    const turned = await readStatus();
+    await shot('react-desktop-resized-controls-used');
+    if (before.position !== '(740, 60)' || moved.position !== '(690, 60)' || moved.moves !== '1' ||
+        !turned.facing.startsWith('90°') || turned.moves !== '2' || moved.canvas.width < 900) {
+      throw new Error(`Movement or rotation changed after desktop canvas scaling: ${JSON.stringify({ before, moved, turned })}`);
+    }
+    return { before, moved, turned, movementAndRotationPreserved: true };
+  });
+  await scenario('react-protractor-resize-alignment', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1315, height: 755, deviceScaleFactor: 1, mobile: false,
+    });
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l2')");
+    await navigate('http://127.0.0.1:4178/game/2');
+    await waitForReactGameReady();
+    await cdp.evaluate("document.querySelector('.maze-protractor-toggle')?.click()");
+    await sleep(250);
+    const readLayout = () => cdp.evaluate(`(() => {
+      const canvas = document.querySelector('#game-container canvas')?.getBoundingClientRect();
+      const shell = document.querySelector('.maze-canvas-shell')?.getBoundingClientRect();
+      return {
+        pressed: document.querySelector('.maze-protractor-toggle')?.getAttribute('aria-pressed'),
+        canvas: canvas ? { left: canvas.left, right: canvas.right, width: canvas.width, height: canvas.height } : null,
+        shell: shell ? { left: shell.left, right: shell.right, width: shell.width, height: shell.height } : null,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: innerWidth,
+      };
+    })()`);
+    const desktop = await readLayout();
+    await shot('react-desktop-protractor-on');
+
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 768, height: 1024, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.evaluate('window.dispatchEvent(new Event("resize"))');
+    await sleep(600);
+    const tablet = await readLayout();
+    await shot('react-tablet-protractor-after-resize');
+    if (desktop.pressed !== 'true' || tablet.pressed !== 'true' ||
+        tablet.canvas.width < 700 || tablet.documentWidth > tablet.viewportWidth + 1 ||
+        Math.abs(tablet.canvas.width - tablet.shell.width) >= 2) {
+      throw new Error(`Protractor did not remain aligned during responsive scaling: ${JSON.stringify({ desktop, tablet })}`);
+    }
+    await cdp.evaluate("document.querySelector('.maze-protractor-toggle')?.click()");
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+    await cdp.evaluate('window.dispatchEvent(new Event("resize"))');
+    await sleep(300);
+    return { desktop, tablet, protractorRemainedEnabled: true };
   });
   await scenario('react-phone-protractor-toggle', async () => {
     const read = () => cdp.evaluate(`(() => {
