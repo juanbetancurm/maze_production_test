@@ -1540,3 +1540,559 @@ body {
     font-size: 16px;
   }
 }
+
+/* AngleMaze's player-facing screens share one quiet frame around the maze.
+   Keep this layer scoped so administration views retain their existing theme. */
+body:has(.maze-experience) {
+  background: #162a35;
+}
+
+#root:has(.maze-experience) {
+  width: 100%;
+}
+
+.maze-experience {
+  --craft-ink: #213a3f;
+  --craft-ink-soft: #52666a;
+  --craft-blue: #246b8c;
+  --craft-blue-deep: #19536e;
+  --craft-line: #d1d8cb;
+  --craft-radius-card: 16px;
+  --craft-transition: 160ms ease;
+  --craft-shadow-sm: 0 6px 18px rgb(7 20 26 / 14%);
+  --craft-shadow-lg: 0 14px 36px rgb(7 20 26 / 28%);
+  --maze-panel-bg: #fcf8ed;
+  --maze-panel-bg-soft: #f3f0e5;
+  --maze-panel-border: #ced5c9;
+  --maze-accent-success: #226340;
+  --maze-accent-success-soft: #e1edda;
+  --maze-accent-warning: #77510c;
+  --maze-accent-warning-soft: #f5e6be;
+  --maze-accent-danger: #a43535;
+  --maze-accent-danger-soft: #f7e5de;
+  min-height: 100vh;
+  min-height: 100svh;
+  color: #f5ead3;
+  background: #162a35;
+  font-family: "Aptos", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+}
+
+.maze-experience .maze-page-title {
+  color: #fcf8ed;
+  font-size: clamp(2.4rem, 6vw, 3.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.maze-experience .maze-page-title > span {
+  color: #f5bb48;
+}
+
+.maze-brand-tagline {
+  color: #c2cfc9;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.maze-experience .maze-page-subtitle {
+  color: #d2ded5;
+  margin: 20px 0 16px;
+}
+
+.maze-experience .maze-card {
+  color: var(--craft-ink);
+  border-radius: 16px;
+}
+
+.maze-experience :is(button, input, select, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.maze-experience :is(button, input, select, a):focus-visible {
+  outline: 3px solid #246b8c;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px #fcf8ed;
+}
+
+.maze-experience :is(button, a):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.maze-experience button:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.maze-experience :is(.maze-pill-btn, .maze-inline-btn, .maze-action-btn, .maze-btn-reset) {
+  min-height: 44px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-weight: 700;
+}
+
+.maze-experience .maze-pill-btn {
+  color: #e4ece7;
+  background: #243e49;
+  border-color: #6f898d;
+}
+
+.maze-experience .maze-pill-btn:hover {
+  background: #304e59;
+}
+
+.maze-experience .maze-inline-btn {
+  color: var(--craft-ink);
+  border-color: #8d9e96;
+  background: #edf0e6;
+}
+
+.maze-experience .maze-inline-btn-danger {
+  color: var(--maze-accent-danger);
+  background: var(--maze-accent-danger-soft);
+}
+
+.maze-experience .maze-action-btn-success {
+  border-color: #164b33;
+  background: #226340;
+  color: #fffdf4;
+  box-shadow: 0 3px 0 #164b33;
+}
+
+.maze-experience .maze-action-btn-danger {
+  background: var(--maze-accent-danger-soft);
+  color: var(--maze-accent-danger);
+  border-color: #bd7c70;
+}
+
+.maze-experience .maze-section-label {
+  color: var(--craft-ink);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+
+.maze-experience :is(.maze-text-field, .maze-select-field, .maze-input) {
+  border-color: #82978b;
+  border-radius: 10px;
+  background: #fffdf7;
+  color: var(--craft-ink);
+  font-size: 1rem;
+}
+
+.maze-experience .maze-registration-panel {
+  width: min(100%, 480px);
+  padding: 24px;
+}
+
+.maze-registration-panel .maze-field-stack,
+.maze-registration-panel .maze-action-btn-primary,
+.maze-registration-panel .maze-session-card {
+  width: 100%;
+}
+
+.maze-registration-panel .maze-session-card {
+  background: #edf0e6;
+  padding: 16px;
+  box-shadow: none;
+}
+
+.maze-registration-panel .maze-field-row {
+  flex-direction: row;
+}
+
+.maze-registration-panel .maze-field-row > input {
+  min-width: 0;
+}
+
+.maze-registration-panel .maze-field-row > button {
+  flex: 0 0 44px;
+  width: 44px;
+}
+
+.maze-experience .maze-modal-overlay {
+  background: rgb(8 22 29 / 78%);
+}
+
+.maze-experience .maze-modal-card {
+  max-height: calc(100svh - 48px);
+  overflow-y: auto;
+}
+
+.maze-experience .maze-modal-item {
+  border-radius: 10px;
+  background: #edeedf;
+}
+
+.maze-experience .maze-modal-title {
+  color: var(--craft-ink);
+  font-size: 2rem;
+}
+
+.maze-level-page .maze-status-copy {
+  color: #d2ded5;
+  max-width: 640px;
+  margin: 20px 0 16px;
+  overflow-wrap: anywhere;
+}
+
+.maze-level-page > .maze-status-error {
+  color: #ffb7a9;
+}
+
+.maze-menu-back {
+  margin-bottom: 24px;
+}
+
+.maze-experience .maze-level-card {
+  padding: 24px;
+  border: 1px solid #ced5c9;
+  border-left: 5px solid var(--level-accent);
+  border-radius: 16px;
+  background: var(--maze-panel-bg);
+  font-family: inherit;
+}
+
+.maze-experience .maze-level-card::before,
+.maze-experience .maze-level-card::after {
+  display: none;
+}
+
+.maze-experience .maze-level-card:hover:not(:disabled) {
+  border-color: #f5bb48;
+  transform: translateY(-2px);
+  box-shadow: var(--craft-shadow-lg);
+}
+
+.maze-experience .maze-level-card.is-locked {
+  opacity: 1;
+  background: #e2e6dd;
+  border-left-color: #768a80;
+}
+
+.maze-level-number {
+  display: block;
+  color: var(--craft-ink-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.maze-experience .maze-level-title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.maze-experience .maze-level-head {
+  flex-direction: row;
+  align-items: center;
+}
+
+.maze-experience .maze-level-badge {
+  flex-shrink: 0;
+  color: #213a3f;
+  background: #f5bb48;
+  border-color: #bd8c29;
+  border-radius: 8px;
+  letter-spacing: 0.04em;
+}
+
+.maze-experience .maze-level-badge.is-locked {
+  background: #d3dccf;
+  border-color: #9aaa9d;
+}
+
+.maze-experience .maze-level-badge.is-completed {
+  color: var(--maze-accent-success);
+  background: var(--maze-accent-success-soft);
+}
+
+.maze-experience .maze-leaderboard-cap,
+.maze-experience .maze-leaderboard-row {
+  background: #edf0e6;
+  border-color: #ced5c9;
+}
+
+.maze-game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 1120px;
+  margin-bottom: 16px;
+}
+
+.maze-game-header .maze-page-title {
+  margin-bottom: 0;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  text-align: left;
+}
+
+.maze-current-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #c2cfc9;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.maze-current-level strong {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #6f898d;
+  border-radius: 8px;
+  color: #f5bb48;
+  font-size: 1.2rem;
+}
+
+.maze-experience .maze-canvas-shell {
+  flex-shrink: 0;
+  border-radius: 12px;
+  border-color: #748a7e;
+  background: #223c35;
+  box-shadow: 0 0 0 4px #243f49, var(--craft-shadow-lg);
+}
+
+.maze-experience .maze-game-controls {
+  flex: 1;
+  gap: 12px;
+}
+
+.maze-experience .maze-game-card {
+  padding: 16px;
+  gap: 12px;
+}
+
+.maze-experience .maze-input {
+  min-height: 44px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.maze-experience :is(.maze-btn-forward, .maze-btn-turn) {
+  min-height: 48px;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.maze-experience .maze-btn-forward {
+  width: 100%;
+  color: #fffdf4;
+  background: #226340;
+  border-color: #164b33;
+  box-shadow: 0 3px 0 #164b33;
+}
+
+.maze-experience .maze-btn-turn {
+  flex: 1;
+  min-width: 0;
+  color: #59420d;
+  background: #f5e6be;
+  border-color: #b7954e;
+}
+
+.maze-experience .maze-btn-reset {
+  width: 100%;
+  color: #f5ead3;
+  background: #30454b;
+  border-color: #7c918f;
+}
+
+.maze-game-controls > .maze-inline-btn {
+  width: 100%;
+  color: #d5dfda;
+  background: #243e49;
+  border-color: #6f898d;
+}
+
+.maze-experience .maze-game-status {
+  font-variant-numeric: tabular-nums;
+}
+
+.maze-experience .maze-game-status-row strong {
+  text-align: right;
+}
+
+.maze-experience .maze-game-lives {
+  border-top: 1px solid #ced5c9;
+  padding-top: 8px;
+  font-size: 1.5rem;
+  letter-spacing: 4px;
+  line-height: 1.3;
+}
+
+.maze-experience .maze-game-encourage {
+  color: #c4e5a9;
+}
+
+.maze-experience .maze-mobile-console {
+  padding: 16px;
+  gap: 12px;
+  border-radius: 16px;
+}
+
+.maze-protractor-toggle {
+  min-height: 48px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #b7954e;
+  border-radius: 10px;
+  color: #59420d;
+  background: #f5e6be;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.maze-protractor-toggle[aria-pressed="true"] {
+  color: #fffdf4;
+  background: #226340;
+  border-color: #164b33;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 14%);
+}
+
+.maze-protractor-toggle:focus-visible {
+  outline: 3px solid #f5bd45;
+  outline-offset: 2px;
+}
+
+.maze-experience .maze-mobile-display {
+  min-height: 112px;
+  padding: 12px;
+  gap: 4px;
+  border-color: #82978b;
+  border-radius: 10px;
+  background: #fffdf7;
+  box-shadow: inset 0 2px 4px rgb(33 58 63 / 8%);
+}
+
+.maze-mobile-display-hint {
+  color: #52666a;
+  font-size: 0.75rem;
+}
+
+.maze-experience .maze-mobile-display-label {
+  color: #52666a;
+}
+
+.maze-experience .maze-mobile-display-input {
+  font-size: 2.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.maze-experience .maze-mobile-action-btn {
+  min-height: 92px;
+  border-radius: 10px;
+  border-color: #b7954e;
+  background: #f5e6be;
+  color: #59420d;
+  box-shadow: 0 3px 0 #d3bd85;
+}
+
+.maze-experience .maze-mobile-action-btn-forward {
+  color: #fffdf4;
+  background: #226340;
+  border-color: #164b33;
+  box-shadow: 0 3px 0 #164b33;
+}
+
+.maze-experience .maze-mobile-action-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.maze-experience .maze-mobile-chip {
+  min-height: 56px;
+  border-radius: 10px;
+  border-color: #82978b;
+  background: #edf0e6;
+  color: #213a3f;
+  box-shadow: none;
+}
+
+.maze-experience .maze-mobile-chip-clear {
+  color: var(--maze-accent-danger);
+  background: var(--maze-accent-danger-soft);
+}
+
+.maze-loading-screen {
+  color: #d2ded5;
+}
+
+.maze-scene-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #1b3024;
+  color: #e5efd9;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 981px) and (max-width: 1151px) {
+  .maze-game-layout {
+    width: min(100%, 800px);
+    flex-wrap: wrap;
+  }
+
+  .maze-game-layout .maze-game-controls {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .maze-game-header {
+    max-width: 620px;
+  }
+}
+
+@media (max-width: 640px) {
+  .maze-game-header {
+    max-width: 420px;
+    margin-bottom: 12px;
+  }
+
+  .maze-experience .maze-registration-panel {
+    padding: 20px 16px;
+  }
+
+  .maze-experience .maze-level-card {
+    padding: 20px 16px;
+  }
+
+  .maze-experience .maze-level-title {
+    font-size: 1.25rem;
+  }
+
+  .maze-experience .maze-mobile-action-btn {
+    min-height: 84px;
+  }
+
+  .maze-experience .maze-mobile-chip {
+    min-height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maze-experience *,
+  .maze-experience *::before,
+  .maze-experience *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .maze-experience :is(button, a):hover,
+  .maze-experience :is(button, a):active {
+    transform: none;
+  }
+}

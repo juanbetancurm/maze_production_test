@@ -45,13 +45,18 @@ const config = {
   //       run its own fit/resize logic on top of our outer responsive wrapper.
   scale: {
     mode: Phaser.Scale.NONE,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // The React wrapper owns responsive scaling and centers the canvas shell.
+    // Phaser centering against the expanding #game-container adds a second
+    // vertical margin, shifting the 600px scene outside its clipped wrapper.
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
 
-  // WHAT: Use nearest-neighbor scaling for all textures.
-  // WHY: Keeps pixel-art textures crisp when scaled up.
-  // HOW: Sets image-rendering: pixelated on canvas, gl.NEAREST in WebGL.
-  pixelArt: true,
+  // WHAT: Render the painted premium art with antialiasing and subpixel poses.
+  // WHY: The current illustration assets are not pixel art; nearest-neighbor
+  //   filtering made their downscaled details and smooth movement look jagged.
+  // HOW: TextureSource#setFilter also explicitly selects LINEAR for the premium
+  //   asset set, while this keeps canvas rendering and position rounding aligned.
+  pixelArt: false,
   
   // WHAT: Arcade Physics configuration block.
   // HOW:  Phaser only activates physics for bodies you explicitly call

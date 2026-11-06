@@ -36,15 +36,25 @@
 // HOW: Paths are relative to the Vite `public/` folder.
 //   `public/assets/grass.png` → served at `/assets/grass.png`.
 
+import {
+  applyPremiumLighting,
+  preloadVisualAssets,
+  VISUAL_TEXTURES,
+} from './visuals/assetManifest.js';
+import { actorDepthForY, PLAYER_CONTACT_SHADOW_DEPTH, PLAYER_GROUND_SHADOW_DEPTH } from './visuals/ActorDepth.js';
+import { GolemView } from './visuals/GolemView.js';
+import { ExitView } from './visuals/ExitView.js';
+
 const ASSETS = {
   grass:  '/assets/grass.png',
   dirt:   '/assets/dirt.png',
   border: '/assets/border.png',
-  player: '/assets/player.png',
   enemy:  '/assets/enemy.png',
   exit:   '/assets/exit.png',
   checkpoint: '/assets/checkpoint.png',
 };
+
+const PLAYER_WALK_ANIMATION_KEY = 'anglemaze.player.walk';
 
 
 /**
@@ -77,6 +87,7 @@ export function preloadThemeAssets(scene) {
       scene.load.image(key, path);
     }
   });
+  preloadVisualAssets(scene);
 }
 
 
@@ -96,7 +107,8 @@ export function preloadThemeAssets(scene) {
  * @returns {boolean}
  */
 export function isThemeLoaded(scene) {
-  return Object.keys(ASSETS).every(key => scene.textures.exists(key));
+  return Object.keys(ASSETS).every(key => scene.textures.exists(key)) &&
+    scene.textures.exists(VISUAL_TEXTURES.playerTopDown);
 }
 
 
@@ -297,9 +309,38 @@ export function drawThemedWalls(scene, walls) {
  */
 export function createThemedPlayer(scene, x, y) {
   if (isThemeLoaded(scene)) {
-    return scene.add.sprite(x, y, 'player')
-      .setDisplaySize(64, 64)
-      .setDepth(5);
+    // Use the owner's exact supplied top-down art. Do not substitute the
+    // generated concept sprite; identity and silhouette are intentional.
+    const sprite = scene.add.sprite(x, y, VISUAL_TEXTURES.playerTopDown)
+      .setDisplaySize(72, 68)
+      .setDepth(actorDepthForY(y));
+    applyPremiumLighting(scene, sprite, VISUAL_TEXTURES.playerTopDown);
+    sprite._groundShadow = scene.add.ellipse(x + 2, y + 18, 50, 18, 0x121b10, 0.1)
+      .setDepth(PLAYER_GROUND_SHADOW_DEPTH);
+    sprite._contactShadow = scene.add.ellipse(x, y + 17, 28, 8, 0x121b10, 0.22)
+      .setDepth(PLAYER_CONTACT_SHADOW_DEPTH);
+    sprite._topDownSprite = true;
+    sprite._restScaleX = sprite.scaleX;
+    sprite._restScaleY = sprite.scaleY;
+    sprite._walkCycleBaseTextureKey = VISUAL_TEXTURES.playerTopDown;
+    sprite._walkCycleTextureKey = VISUAL_TEXTURES.playerWalk;
+    sprite._walkCycleAnimationKey = null;
+    sprite._walkCycleActive = false;
+    sprite._restDisplayWidth = sprite.displayWidth;
+    sprite._restDisplayHeight = sprite.displayHeight;
+
+    if (scene.textures.exists(VISUAL_TEXTURES.playerWalk)) {
+      if (!scene.anims.exists(PLAYER_WALK_ANIMATION_KEY)) {
+        scene.anims.create({
+          key: PLAYER_WALK_ANIMATION_KEY,
+          frames: scene.anims.generateFrameNumbers(VISUAL_TEXTURES.playerWalk, { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+      sprite._walkCycleAnimationKey = PLAYER_WALK_ANIMATION_KEY;
+    }
+    return sprite;
   } else {
     return scene.add.rectangle(x, y, 20, 20, 0x4499ff);
   }
@@ -318,6 +359,10 @@ export function createThemedPlayer(scene, x, y) {
  * @returns {Phaser.GameObjects.Sprite|Phaser.GameObjects.Rectangle}
  */
 export function createThemedExit(scene, x, y) {
+  if (isThemeLoaded(scene) && scene.textures.exists(VISUAL_TEXTURES.exit)) {
+    return ExitView(scene, x, y, { reducedMotion: scene._reducedMotion === true });
+  }
+
   if (isThemeLoaded(scene)) {
     return scene.add.sprite(x, y, 'exit')
       .setDisplaySize(64, 64)
@@ -358,14 +403,19 @@ export function createThemedStart(scene, x, y) {
  * @param {Array<{x: number, y: number}>} positions
  */
 export function placeThemedEnemies(scene, positions) {
-  if (!isThemeLoaded(scene) || !positions?.length) return;
+  if (!isThemeLoaded(scene) || !positions?.length) return null;
 
-  positions.forEach(({ x, y }) => {
+  if (scene.textures.exists(VISUAL_TEXTURES.golem)) {
+    return GolemView(scene, positions, { reducedMotion: scene._reducedMotion === true });
+  }
+
+  positions.forEach(({ x, y }, index) => {
     scene.add.sprite(x, y, 'enemy')
       .setDisplaySize(100, 100)
       .setDepth(4)
-      .setAngle(Math.random() * 360);
+      .setAngle((index % 4) * 90);
   });
+  return null;
 }
 
 function getSpriteBaseAngle(facingAngle) {
@@ -421,6 +471,13 @@ export function updatePlayerRotation(player, facingAngle, themed, scene) {
   //   Phaser: 0°=right, 90°=down, CW positive (screen convention)
   //   If the player sprite faces UP in the PNG: phaserTarget = 90 - facingAngle
   const targetAngle = getSpriteBaseAngle(facingAngle);
+
+  if (scene._reducedMotion) {
+    player._rotationTween?.stop();
+    player._rotationTween = null;
+    player.setAngle(targetAngle);
+    return;
+  }
 
   // WHAT: Calculate the shortest rotation path.
   //
@@ -505,11 +562,131 @@ export function updatePlayerRotation(player, facingAngle, themed, scene) {
  * @param {boolean} themed  Whether the Minecraft theme is active.
  * @param {Phaser.Scene} scene  The active scene (for scene.tweens.add).
  */
+/** Add a restrained breathing pulse to the resting visual only. */
+export function startIdleAnimation(player, themed, scene) {
+  if (!themed || !scene || scene._reducedMotion || !player?.setScale || player._idleTween) return;
+  const baseScaleY = player._restScaleY ?? player.scaleY;
+  player._idleTween = scene.tweens.add({
+    targets: player,
+    scaleY: baseScaleY * 1.012,
+    duration: 1800,
+    ease: 'Sine.easeInOut',
+    yoyo: true,
+    repeat: -1,
+  });
+}
+
+/** Stop the idle pulse and restore the approved sprite's original scale. */
+export function stopIdleAnimation(player) {
+  if (!player) return;
+  player._idleTween?.stop();
+  player._idleTween = null;
+  if (typeof player._restScaleX === 'number' && typeof player._restScaleY === 'number') {
+    player.setScale(player._restScaleX, player._restScaleY);
+  }
+}
+
+/** Give wall contact a brief, display-only squash and recovery. */
+export function startImpactAnimation(player, themed, scene) {
+  if (!themed || !scene || scene._reducedMotion || !player?.setScale) return;
+  stopImpactAnimation(player);
+  const scaleX = player._restScaleX ?? player.scaleX;
+  const scaleY = player._restScaleY ?? player.scaleY;
+  player._impactTween = scene.tweens.add({
+    targets: player,
+    scaleX: scaleX * 0.92,
+    scaleY: scaleY * 1.06,
+    duration: 75,
+    ease: 'Sine.easeOut',
+    yoyo: true,
+    onComplete: () => {
+      player.setScale(scaleX, scaleY);
+      player._impactTween = null;
+    },
+  });
+}
+
+/** Cancel collision feedback and return the visual to its authored dimensions. */
+export function stopImpactAnimation(player) {
+  if (!player) return;
+  player._impactTween?.stop();
+  player._impactTween = null;
+  if (typeof player._restScaleX === 'number' && typeof player._restScaleY === 'number') {
+    player.setScale(player._restScaleX, player._restScaleY);
+  }
+}
+
+/** Compress the visual briefly as a turn begins, then return to its resting scale. */
+export function startTurnFeedback(player, themed, scene) {
+  if (!themed || !scene || scene._reducedMotion || !player?.setScale) return;
+  stopTurnFeedback(player);
+  const baseScaleX = player._restScaleX ?? player.scaleX;
+  player._turnFeedbackTween = scene.tweens.add({
+    targets: player,
+    scaleX: baseScaleX * 0.96,
+    duration: 70,
+    ease: 'Sine.easeOut',
+    yoyo: true,
+    onComplete: () => {
+      player.setScale(baseScaleX, player._restScaleY ?? player.scaleY);
+      player._turnFeedbackTween = null;
+    },
+  });
+}
+
+/** Cancel turn feedback before travel, collision handling, or reduced motion. */
+export function stopTurnFeedback(player) {
+  if (!player) return;
+  player._turnFeedbackTween?.stop();
+  player._turnFeedbackTween = null;
+  if (typeof player._restScaleX === 'number') player.scaleX = player._restScaleX;
+}
+
+/** Add a light horizontal rebound when travel ends, without shifting position. */
+export function startSettleAnimation(player, themed, scene) {
+  if (!themed || !scene || scene._reducedMotion || !player?.setScale) return;
+  stopSettleAnimation(player);
+  const baseScaleX = player._restScaleX ?? player.scaleX;
+  player._settleTween = scene.tweens.add({
+    targets: player,
+    scaleX: baseScaleX * 1.035,
+    duration: 95,
+    ease: 'Sine.easeOut',
+    yoyo: true,
+    onComplete: () => {
+      player.setScale(baseScaleX, player._restScaleY ?? player.scaleY);
+      player._settleTween = null;
+    },
+  });
+}
+
+/** Stop the endpoint rebound before another visual state takes ownership. */
+export function stopSettleAnimation(player) {
+  if (!player) return;
+  player._settleTween?.stop();
+  player._settleTween = null;
+  if (typeof player._restScaleX === 'number') player.scaleX = player._restScaleX;
+}
+
 export function startWalkAnimation(player, facingAngle, themed, scene) {
   if (!themed || !scene) return;
+  stopSettleAnimation(player);
+  stopTurnFeedback(player);
+  stopIdleAnimation(player);
+
+  if (scene._reducedMotion) {
+    stopWalkAnimation(player);
+    if (typeof facingAngle === 'number' && player?.setAngle) {
+      player.setAngle(getSpriteBaseAngle(facingAngle));
+    }
+    return;
+  }
 
   // Stop any existing walk animation first (prevents stacking).
   stopWalkAnimation(player);
+  if (player._walkAnimationKey && scene.anims.exists(player._walkAnimationKey)) {
+    player.play(player._walkAnimationKey, true);
+  }
 
   // WHAT: Also kill the smooth turn tween from updatePlayerRotation().
   //
@@ -535,6 +712,36 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
 
   player._walkBaseScaleX = player.scaleX;
   player._walkBaseScaleY = player.scaleY;
+
+  if (player._topDownSprite) {
+    // The walk frames are a visual-only pose change. The physics body remains
+    // authoritative and this sprite continues to mirror it in MazeScene.update.
+    player.setAngle(baseAngle);
+    if (player._walkCycleAnimationKey && scene.textures.exists(player._walkCycleTextureKey)) {
+      // The static portrait uses a normal-mapped Light2D pipeline. The walk
+      // sheet has painted lighting and no matching normal map, so return to
+      // Phaser's default texture pipeline before switching textures.
+      player.resetPipeline();
+      player.setTexture(player._walkCycleTextureKey);
+      player.setDisplaySize(player._restDisplayWidth, player._restDisplayHeight);
+      player._walkCycleActive = true;
+      player.play(player._walkCycleAnimationKey, true);
+      return;
+    }
+
+    // Keep the existing cue as a graceful fallback if the optional sheet did
+    // not load. It does not change the player position or physics footprint.
+    player._walkTweenScale = scene.tweens.add({
+      targets: player,
+      scaleX: player._walkBaseScaleX * 1.025,
+      scaleY: player._walkBaseScaleY * 0.985,
+      duration: 145,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+    return;
+  }
 
   player._walkTweenScale = scene.tweens.add({
     targets: player,
@@ -631,6 +838,20 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
  * @param {Phaser.GameObjects.Sprite} player  The player game object.
  */
 export function stopWalkAnimation(player, facingAngle, themed) {
+  stopSettleAnimation(player);
+  stopTurnFeedback(player);
+  if (player?._walkCycleActive) {
+    player.anims?.stop();
+    player.resetPipeline();
+    player.setTexture(player._walkCycleBaseTextureKey);
+    player.setDisplaySize(player._restDisplayWidth, player._restDisplayHeight);
+    applyPremiumLighting(player.scene, player, player._walkCycleBaseTextureKey);
+    player._walkCycleActive = false;
+  } else if (player?._walkAnimationKey && player.anims?.isPlaying) {
+    player.anims.stop();
+    player.setFrame(0);
+  }
+
   // Stop rotation tween
   if (player._walkTweenRotation) {
     player._walkTweenRotation.stop();

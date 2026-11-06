@@ -1,0 +1,162 @@
+{
+  "startedAt": "2026-11-06T00:19:17.898Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "react-responsive-viewports",
+      "result": [
+        {
+          "name": "phone-360x800",
+          "width": 360,
+          "height": 800,
+          "mobile": true,
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "canvasCount": 1,
+          "documentWidth": 360,
+          "canvas": {
+            "left": 16,
+            "right": 344,
+            "width": 328,
+            "height": 246
+          },
+          "ready": true,
+          "pass": true
+        },
+        {
+          "name": "tablet-768x1024",
+          "width": 768,
+          "height": 1024,
+          "mobile": false,
+          "viewport": {
+            "width": 768,
+            "height": 1024
+          },
+          "canvasCount": 1,
+          "documentWidth": 753,
+          "canvas": {
+            "left": 66.5,
+            "right": 686.5,
+            "width": 620,
+            "height": 465
+          },
+          "ready": true,
+          "pass": true
+        },
+        {
+          "name": "phone-landscape-844x390",
+          "width": 844,
+          "height": 390,
+          "mobile": true,
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "canvasCount": 1,
+          "documentWidth": 844,
+          "canvas": {
+            "left": 215.33334350585938,
+            "right": 628.6666259765625,
+            "width": 413.3332824707031,
+            "height": 310
+          },
+          "ready": true,
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.",
+    "Headless browser frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Real-device coverage remains unmeasured in this run."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/App.jsx\nfrontend/src/context/GameContext.jsx\nfrontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/AdminPage.jsx\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 65066,
+  "browser": {
+    "Browser": "Edg/156.0.4314.58",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0",
+    "V8-Version": "15.6.12.10",
+    "WebKit-Version": "537.36 (@7806b68d20d1c1273d5b07b4f4de18e8f5852581)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:65066/devtools/browser/8968605e-34d2-4b55-bff3-46c038afb85c"
+  },
+  "browserTargets": [
+    {
+      "id": "0F59FC1DDAA92E7B89F3DC64920E76A0",
+      "type": "background_page",
+      "title": "Microsoft Voices",
+      "url": "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold/_generated_background_page.html"
+    },
+    {
+      "id": "12236ABEA0EFC3F412EA7C5ED852027A",
+      "type": "background_page",
+      "title": "WebRTC Internals Extension",
+      "url": "chrome-extension://ncbjelpjchkpbikbpkcchkhkblodoama/_generated_background_page.html"
+    },
+    {
+      "id": "0198043B399474CFDE7D89A65F80B250",
+      "type": "background_page",
+      "title": "Media Internals Services Extension",
+      "url": "chrome-extension://fikbjbembnmfhppjfnmfkahdhfohhjmg/_generated_background_page.html"
+    },
+    {
+      "id": "F2282947CCD553160D0A1443BC537B03",
+      "type": "background_page",
+      "title": "Edge Feedback",
+      "url": "chrome-extension://ihmafllikibpmigkcoadcmckbfhibefp/_generated_background_page.html"
+    },
+    {
+      "id": "B44FEF9FCBBB537C518C7C33DE55A1A5",
+      "type": "background_page",
+      "title": "WebRTC Extension",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "BFA2E38416BA079857FA9ED937C1D4B5",
+      "type": "page",
+      "title": "about:blank",
+      "url": "about:blank"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "finishedAt": "2026-11-06T00:19:27.226Z",
+  "apiRequests": [
+    {
+      "at": "2026-11-06T00:19:21.034Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:19:21.035Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:19:21.294Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:19:21.295Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    }
+  ]
+}

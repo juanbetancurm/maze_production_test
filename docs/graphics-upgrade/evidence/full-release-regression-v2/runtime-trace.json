@@ -1,0 +1,53 @@
+{
+  "startedAt": "2026-11-05T20:41:16.394Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/App.jsx\nfrontend/src/context/GameContext.jsx\nfrontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/AdminPage.jsx\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 62335,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:62335/devtools/browser/c2eda5ce-127c-474e-8ca5-e34c5892582f"
+  },
+  "browserTargets": [
+    {
+      "id": "74A48C45A08BBACD2569CB62E554C594",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "F417D44E466F078062EB795DA558C9D1",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    },
+    {
+      "id": "8DBD726FC2E32CDC3A5F87225D7072D8",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "FC442AF3332B4E34E3BC1D97A3B9FD2D",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: CDP timeout: Page.enable\n    at Timeout._onTimeout (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:79:135)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)",
+  "apiRequests": []
+}

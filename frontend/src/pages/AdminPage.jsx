@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { deleteAdminTeam, getAdminTeam, getAdminTeams } from '../lib/adminApi';
 
@@ -47,7 +47,7 @@ export default function AdminPage() {
     return `${selectedTeam.members.map((member) => member.name).join(', ')} - Course ${selectedTeam.course}`;
   }, [selectedTeam]);
 
-  async function loadTeams(secret = adminSecret) {
+  const loadTeams = useCallback(async (secret = adminSecret) => {
     if (!secret) return;
 
     setIsLoadingTeams(true);
@@ -65,7 +65,7 @@ export default function AdminPage() {
     } finally {
       setIsLoadingTeams(false);
     }
-  }
+  }, [adminSecret]);
 
   async function loadTeamDetail(teamId, secret = adminSecret) {
     if (!teamId || !secret) return;
@@ -89,7 +89,7 @@ export default function AdminPage() {
     if (adminSecret) {
       loadTeams(adminSecret);
     }
-  }, [adminSecret]);
+  }, [adminSecret, loadTeams]);
 
   const handleUnlock = (event) => {
     event.preventDefault();

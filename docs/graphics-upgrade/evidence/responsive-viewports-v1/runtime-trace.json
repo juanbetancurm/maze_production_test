@@ -1,0 +1,55 @@
+{
+  "startedAt": "2026-11-06T00:07:01.279Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/App.jsx\nfrontend/src/context/GameContext.jsx\nfrontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/AdminPage.jsx\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 56479,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:56479/devtools/browser/f4148e6d-0279-44ea-b81d-0b3f706cc471"
+  },
+  "browserTargets": [
+    {
+      "id": "E5A1E0553E60623E0889C2A8F9367D5A",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "E3002204DFB62945A5A2A60B6EC4905D",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    },
+    {
+      "id": "BDE66C679794428311E2F820870CA018",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "47719A029C3C27941E8B87B79132B249",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: Game layout overflowed or lost its canvas at phone-360x800: {\"viewport\":{\"width\":980,\"height\":2178},\"canvasCount\":0,\"documentWidth\":980,\"canvas\":null,\"ready\":false}\n    at file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:572:24\n    at async scenario (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:136:18)\n    at async file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:541:3",
+  "apiRequests": []
+}

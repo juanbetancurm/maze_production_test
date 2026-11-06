@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-11-03T21:18:38.948Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 64224,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:64224/devtools/browser/3eac35db-f2f3-4bb6-831a-17317e8f14d5"
+  },
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: CDP timeout: Page.enable\n    at Timeout._onTimeout (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:79:135)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)",
+  "apiRequests": []
+}

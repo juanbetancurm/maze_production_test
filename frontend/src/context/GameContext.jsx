@@ -6,8 +6,10 @@
  * HOW: The provider keeps backend-backed state in React Context so every page
  *   can read or update it through useGame().
  */
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getProgress, getTeam } from '../lib/api';
+import { GameContext } from './game-context.js';
+import { normalizeProgressResponse } from './progress.js';
 
 const TEAM_ID_STORAGE_KEY = 'anglemaze:teamId';
 const TEAM_ID_COOKIE_KEY = 'anglemaze_team_id';
@@ -32,18 +34,6 @@ function clearTeamIdCookie() {
   document.cookie = `${TEAM_ID_COOKIE_KEY}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-function normalizeLevelProgress(progressList = []) {
-  return progressList.reduce((acc, entry) => {
-    acc[entry.levelId] = {
-      unlocked: entry.unlocked,
-      completed: entry.completed,
-      bestMoves: entry.bestMoves ?? null,
-      bestLivesRemaining: entry.bestLivesRemaining ?? null,
-    };
-    return acc;
-  }, {});
-}
-
 function normalizeTeam(savedTeam) {
   if (!savedTeam) return null;
 
@@ -56,20 +46,6 @@ function normalizeTeam(savedTeam) {
   };
 }
 
-export function normalizeProgressResponse(progressList = []) {
-  return normalizeLevelProgress(progressList);
-}
-
-const GameContext = createContext(null);
-
-export function useGame() {
-  const ctx = useContext(GameContext);
-  if (!ctx) {
-    throw new Error('useGame() must be used inside <GameProvider>');
-  }
-  return ctx;
-}
-
 export function GameProvider({ children }) {
   const hydrationStartedRef = useRef(false);
   const [team, setTeam] = useState(null);
@@ -79,7 +55,7 @@ export function GameProvider({ children }) {
 
   const applySavedTeam = useCallback((savedTeam, progressList = savedTeam?.levelProgress) => {
     const normalizedTeam = normalizeTeam(savedTeam);
-    const normalizedProgress = normalizeLevelProgress(progressList);
+    const normalizedProgress = normalizeProgressResponse(progressList);
 
     setTeam(normalizedTeam);
     setLevelProgress(

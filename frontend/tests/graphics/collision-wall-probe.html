@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AngleMaze collision geometry probe</title>
+    <style>
+      body { margin: 0; background: #15212b; color: #edf5ff; font: 14px system-ui; }
+      header, pre { padding: 8px 16px; }
+      #game-container { width: 800px; height: 600px; }
+    </style>
+  </head>
+  <body>
+    <header>Collision geometry probe — level 2 (add <code>?level=2&amp;debugCollision=1</code> to see live hitboxes)</header>
+    <div id="game-container"></div>
+    <pre id="probe-result">Waiting for MazeScene…</pre>
+    <script type="module" src="./baseline-scene.js"></script>
+    <script type="module">
+      const output = document.querySelector('#probe-result');
+      const waitForBaseline = async () => {
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+          if (window.anglemazeBaseline) return window.anglemazeBaseline;
+          await new Promise(resolve => setTimeout(resolve, 25));
+        }
+        throw new Error('Baseline scene fixture did not load');
+      };
+
+      try {
+        const baseline = await waitForBaseline();
+        await baseline.ready();
+        const geometry = baseline.verifyGolemFootprint();
+        const results = geometry.samples;
+        const rotations = geometry.rotations;
+        const swept = geometry.swept;
+        const liveScene = baseline.scene();
+        const playerShape = liveScene.playerGolemFootprint;
+        const liveGolem = liveScene.golemCollisionShapes[0];
+        const safeStartY = liveGolem.y - (playerShape.halfHeight + liveGolem.footprint.halfHeight + 8);
+        baseline.place(liveGolem.x, safeStartY, 270);
+        const clearScene = baseline.scene();
+        const clearApproach = clearScene.goForward(4);
+        const clearStartTime = performance.now();
+        let clearFrames = 0;
+        while (clearFrames < 10 && clearScene.isMoving && !clearScene.isResetting) {
+          clearScene.sys.step(clearStartTime + clearFrames * (1000 / 60), 1000 / 60);
+          clearFrames += 1;
+        }
+        const clearApproachState = baseline.snapshot();
+        clearScene._moveTimer?.remove();
+        clearScene._moveTimer = null;
+        clearScene.player.body.setVelocity(0, 0);
+        clearScene.isMoving = false;
+        baseline.place(120, 220, 270);
+        const crossingScene = baseline.scene();
+        const movementStarted = crossingScene.goForward(80);
+        const startTime = performance.now();
+        let frames = 0;
+        while (frames < 30 && !crossingScene.isResetting) {
+          crossingScene.sys.step(startTime + frames * (1000 / 60), 1000 / 60);
+          frames += 1;
+        }
+        const response = baseline.snapshot();
+        const facingChecks = baseline.verifyGolemTracking(770, 550);
+        const result = {
+          playerFootprint: geometry.footprint,
+          golemFootprint: geometry.golemFootprint,
+          samples: results,
+          rotationInvariant: rotations,
+          swept,
+          clearApproach,
+          clearApproachState,
+          movementStarted,
+          physicsFrames: frames,
+          response,
+          facingChecks,
+        };
+        output.textContent = JSON.stringify(result, null, 2);
+        document.body.dataset.probePassed = String(
+          results.every(sample => sample.pass) &&
+          rotations.every(rotation => rotation.detected) &&
+          swept &&
+          clearApproachState.lives === 5 &&
+          clearApproachState.lastCollisionCause === null &&
+          movementStarted &&
+          response.lives === 4 &&
+          response.lastCollisionCause === 'golem' &&
+          response.resetting &&
+          facingChecks.movedSmoothly && facingChecks.errors.every(error => error < 0.15),
+        );
+      } catch (error) {
+        output.textContent = String(error?.stack ?? error);
+        document.body.dataset.probePassed = 'false';
+      }
+    </script>
+  </body>
+</html>

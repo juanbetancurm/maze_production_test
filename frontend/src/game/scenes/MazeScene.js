@@ -29,9 +29,23 @@ import {
   drawThemedBackground, drawThemedBorder, drawThemedWalls,
   createThemedPlayer, createThemedExit, createThemedStart,
   placeThemedEnemies,
-  updatePlayerRotation, flashPlayerCrash, getTrailStyle,
+  updatePlayerRotation, getTrailStyle,
   startWalkAnimation, stopWalkAnimation,
+  startIdleAnimation, stopIdleAnimation, startImpactAnimation, stopImpactAnimation,
+  startTurnFeedback, stopTurnFeedback, startSettleAnimation, stopSettleAnimation,
 } from '../minecraftTheme.js';
+import EnvironmentView from '../visuals/EnvironmentView.js';
+import CollisionDebugView from '../visuals/CollisionDebugView.js';
+import ProtractorView from '../visuals/ProtractorView.js';
+import { actorDepthForY } from '../visuals/ActorDepth.js';
+import { measureAlphaFootprint, sweptFootprintsContact } from '../visuals/CollisionGeometry.js';
+import {
+  areVisualAssetsLoaded,
+  applyVisualAssetFiltering,
+  enablePremiumLighting,
+  prepareCheckpointTextures,
+  VISUAL_TEXTURES,
+} from '../visuals/assetManifest.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -131,6 +145,8 @@ const LEVEL_CONFIG = {
   // Add Level 3 here later:
   // 3: { startX: ..., startY: ..., exitX: ..., exitY: ..., facingAngle: ... },
 };
+
+const GOLEM_ALPHA_FALLBACK = Object.freeze({ halfWidth: 42, halfHeight: 31.5, offsetX: 0, offsetY: 0, alphaBounds: null });
 
 /**
  * createDiagonalWallBodies(scene, x1, y1, x2, y2, wallGroup)
@@ -335,11 +351,20 @@ export default class MazeScene extends Phaser.Scene {
    */
   create() {
 
+    const motionPreferenceQuery = typeof window !== 'undefined'
+      ? window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null
+      : null;
+    this._motionPreferenceQuery = motionPreferenceQuery;
+    this._reducedMotion = Boolean(motionPreferenceQuery?.matches);
+
     // WHAT: Check if all theme images loaded successfully.
     // WHY: If any image is missing (user hasn't placed the PNGs yet),
     //   we fall back to the original flat-color rendering.
     //   Every themed rendering function checks this flag.
     this._themed = isThemeLoaded(this);
+    prepareCheckpointTextures(this);
+    applyVisualAssetFiltering(this);
+    this._premiumLightingEnabled = enablePremiumLighting(this);
 
     // ── Level selection — MUST come FIRST ──────────────────────────────
     //
@@ -382,19 +407,27 @@ export default class MazeScene extends Phaser.Scene {
     // `this.cameras.main` is the default camera Phaser creates for every scene.
     // Setting its background colour avoids the default black or transparent canvas.
     // WHAT: Grass-tiled background (themed) or solid color (fallback).
-    drawThemedBackground(this);
-    if (!this._themed) {
-      this.cameras.main.setBackgroundColor('#1a1a2e');
+    this._premiumEnvironment = this._themed && areVisualAssetsLoaded(this, 'environment');
+    if (this._premiumEnvironment) {
+      this.environmentView = EnvironmentView(this, {
+        width: 800,
+        height: 600,
+        textureKeys: {
+          grass: VISUAL_TEXTURES.grass,
+          wallKit: VISUAL_TEXTURES.wallKit,
+          wallJoin: VISUAL_TEXTURES.wallJoin,
+        },
+      });
+      this.environmentView.drawBackground();
+      this.environmentView.drawWalls(walls);
+    } else {
+      drawThemedBackground(this);
+      if (!this._themed) {
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+      }
+      drawThemedWalls(this, walls);
+      drawThemedBorder(this);
     }
-
-
-    // ── 2. Draw walls visually with the Graphics API ──────────────────────────
-    //
-    // WHAT: Draw walls as thick dirt-block lines (themed) or thin gray (fallback).
-    drawThemedWalls(this, walls);
-
-    // WHAT: Draw a wood/log border around the maze edge (themed only).
-    drawThemedBorder(this);
 
 
     // ── 3. Create static physics bodies for every wall ────────────────────────
@@ -460,13 +493,13 @@ export default class MazeScene extends Phaser.Scene {
      createThemedStart(this, cfg.startX, cfg.startY);
 
 
-    // ── 5. Exit zone (static body — needed for overlap detection) ─────────────
+    // ── 5. Exit artwork and separate static trigger ──────────────────────────
     //
-    // WHAT: A gold rectangle that marks the goal the player must reach.
+    // WHAT: Render the goal artwork and create an invisible overlap trigger.
     //
     // WHY does the exit zone need a physics body when the start zone doesn't?
     //   Phaser's overlap system only works when BOTH objects have physics bodies.
-    //   If exitZone had no body, `physics.add.overlap()` would silently never
+    //   If the invisible exitZone had no body, `physics.add.overlap()` would never
     //   fire. We make it STATIC so it has zero per-frame cost (same reasoning
     //   as the walls), while still being detectable by the overlap system.
     //
@@ -479,11 +512,20 @@ export default class MazeScene extends Phaser.Scene {
     //
     // Cell [3,2] spans x=600–800, y=400–600.
     // (740, 540) sits comfortably inside, clear of the x=600 and x=800 walls.
-    // WHAT: Draw the exit zone at the position from LEVEL_CONFIG.
-    // WHY: Level 1 exits bottom-right (740,540). Level 2 exits near top-left (150,50).
-    const exitZone = createThemedExit(this, cfg.exitX, cfg.exitY);
-    
-    this.physics.add.existing(exitZone, true); // true = STATIC body
+    // Level 1 exits bottom-right (740,540); Level 2 exits near top-left (150,50).
+    // Keep the artwork outside the physics simulation. Its measured display
+    // bounds define a separate invisible trigger, preserving the existing
+    // themed (64×64) and fallback (40×40) activation areas.
+    const exitVisual = createThemedExit(this, cfg.exitX, cfg.exitY);
+    this.exitVisual = exitVisual;
+    const exitZone = this.add.zone(
+      cfg.exitX,
+      cfg.exitY,
+      exitVisual.displayWidth,
+      exitVisual.displayHeight,
+    );
+    exitZone.setVisible(false);
+    this.physics.add.existing(exitZone, true); // true = STATIC trigger body
 
 
     // ── 6. Angle reference compass (renders first = lowest z-layer) ──────────
@@ -554,14 +596,93 @@ export default class MazeScene extends Phaser.Scene {
 
     // The visible character sprite — handles rendering and animation.
     this.playerSprite = createThemedPlayer(this, cfg.startX, cfg.startY);
+    this.playerGolemFootprint = this.playerSprite?._topDownSprite
+      ? measureAlphaFootprint(
+        this,
+        VISUAL_TEXTURES.playerTopDown,
+        this.playerSprite.displayWidth,
+        this.playerSprite.displayHeight,
+      )
+      : { halfWidth: 10, halfHeight: 10, offsetX: 0, offsetY: 0, alphaBounds: null };
+    this.protractorView = new ProtractorView(this, { reducedMotion: this._reducedMotion });
+    this.protractorView.setVisible(Boolean(this.game._protractorVisible));
+    this.protractorView.setScreenScale(this.game._gameScale || 1);
+    this.protractorView.setPose(this.player.x, this.player.y, this.facingAngle);
 
-    // WHAT: Place enemy mob sprites at key positions (themed only).
-    // WHY: Visual decoration — the actual collision comes from the wall
-    //   segments that form the diamond shapes in the maze data.
+    // Measure the opaque image once and use its convex alpha hull for collision.
+    // The static physical hull remains independent of the golem's visual facing,
+    // breathing animation, shadows, and transparent texture padding.
     const enemyPositions = this.game._currentLevel === 2
       ? [{ x: 120, y: 295 }, { x: 325, y: 220 }, { x: 523, y: 97 }, { x: 625, y: 190 }]
       : [];
-    placeThemedEnemies(this, enemyPositions);
+    this.golemAlphaFootprint = this.textures.exists(VISUAL_TEXTURES.golem)
+      ? measureAlphaFootprint(this, VISUAL_TEXTURES.golem, 100, 100, { excludeGreenFoliage: true })
+      : GOLEM_ALPHA_FALLBACK;
+    this.golemCollisionShapes = enemyPositions.map((position, golemIndex) => ({
+      ...position,
+      golemIndex,
+      footprint: this.golemAlphaFootprint,
+    }));
+    this.golemView = placeThemedEnemies(this, enemyPositions);
+
+    this._lastCollisionCause = null;
+    this._lastCollisionDetails = null;
+    const debugRequested = new URLSearchParams(window.location.search).get('debugCollision') === '1';
+    this._collisionDebugEnabled = Boolean(import.meta.env.DEV && debugRequested);
+    this.collisionDebugView = this._collisionDebugEnabled
+      ? CollisionDebugView(this, this.playerGolemFootprint)
+      : null;
+
+    const onMotionPreferenceChange = (event) => {
+      this._reducedMotion = Boolean(event.matches);
+      this.golemView?.setReducedMotion(this._reducedMotion);
+      this.exitVisual?.setReducedMotion?.(this._reducedMotion);
+      if (this.playerSprite && this._themed) {
+        if (this.isMoving && !this._reducedMotion) {
+          startWalkAnimation(this.playerSprite, this.facingAngle, this._themed, this);
+        } else if (this._reducedMotion) {
+          stopIdleAnimation(this.playerSprite);
+          stopImpactAnimation(this.playerSprite);
+          stopTurnFeedback(this.playerSprite);
+          stopSettleAnimation(this.playerSprite);
+          stopWalkAnimation(this.playerSprite, this.facingAngle, this._themed);
+          updatePlayerRotation(this.playerSprite, this.facingAngle, this._themed, this);
+        } else {
+          updatePlayerRotation(this.playerSprite, this.facingAngle, this._themed, this);
+          if (!this.isResetting && !this.hasWon) startIdleAnimation(this.playerSprite, this._themed, this);
+        }
+      }
+    };
+    this._motionPreferenceListener = onMotionPreferenceChange;
+    if (motionPreferenceQuery?.addEventListener) {
+      motionPreferenceQuery.addEventListener('change', onMotionPreferenceChange);
+    } else {
+      motionPreferenceQuery?.addListener?.(onMotionPreferenceChange);
+    }
+
+    // These views may own per-scene composite textures and handles. Clean them
+    // before a restart rebuilds the scene so retained game textures do not grow.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (motionPreferenceQuery?.removeEventListener) {
+        motionPreferenceQuery.removeEventListener('change', onMotionPreferenceChange);
+      } else {
+        motionPreferenceQuery?.removeListener?.(onMotionPreferenceChange);
+      }
+      this._motionPreferenceQuery = null;
+      this._motionPreferenceListener = null;
+      this.events.off(Phaser.Scenes.Events.POST_UPDATE, this._syncPlayerVisuals, this);
+      this.events.off(Phaser.Scenes.Events.POST_UPDATE, this._checkGolemCollision, this);
+      this.collisionDebugView?.destroy();
+      this.collisionDebugView = null;
+      this.environmentView?.destroy();
+      this.environmentView = null;
+      this.golemView?.destroy();
+      this.golemView = null;
+      this.protractorView?.destroy();
+      this.protractorView = null;
+      this.exitVisual?.destroy?.();
+      this.exitVisual = null;
+    });
 
     // Register the rectangle as a DYNAMIC physics body.
     // Omitting the second argument (or passing `false`) = dynamic.
@@ -575,6 +696,12 @@ export default class MazeScene extends Phaser.Scene {
     //   bodies stop the player from *touching* the edge lines, and
     //   collideWorldBounds acts as a final safety net.
     this.player.body.setCollideWorldBounds(true);
+    this._lastGolemCollisionPosition = { x: this.player.x, y: this.player.y };
+    // Arcade syncs body motion back to its Game Object during POST_UPDATE.
+    // Register after Arcade's own POST_UPDATE handler so visuals read the
+    // resolved position before rendering, without moving or tweening physics.
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, this._syncPlayerVisuals, this);
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, this._checkGolemCollision, this);
 
     // WHAT: `physics.add.collider(A, B, callback, processCallback, context)`
     //   tests A against every member of B each frame. If their AABBs overlap,
@@ -599,6 +726,9 @@ export default class MazeScene extends Phaser.Scene {
       null,            // processCallback — null = always fire the collider
       this,            // context — makes `this` inside _onWallHit = scene
     );
+
+    // Golem contact is checked against the visible circular footprint below.
+    // The player keeps its smaller 20×20 Arcade body for unchanged wall hits.
 
 
     // ── 8b. Player direction indicator (renders above the player square) ──────
@@ -818,6 +948,10 @@ export default class MazeScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, exitZone, () => {
       if (this.hasWon) return;
       this.hasWon = true;
+      this.exitVisual?.activate?.();
+      this.setProtractorVisible(false);
+      stopIdleAnimation(this.playerSprite);
+      stopWalkAnimation(this.playerSprite, this.facingAngle, this._themed);
 
       // Zero both velocity components so the player stops on the spot.
       // (x = horizontal, y = vertical in Phaser's coordinate system.)
@@ -868,19 +1002,32 @@ export default class MazeScene extends Phaser.Scene {
      *   1. Create a sprite (visible marker).
      *   2. Create an invisible rectangle with a static physics body.
      *   3. Add an overlap detector between the player and the zone.
-     *   4. Tint the sprite based on whether it's inactive, active, or passed.
+     *   4. Select the supplied active/claimed badge art and alpha for progress.
      */
     const levelCheckpoints = checkpointsByLevel[this.game._currentLevel] || [];
 
-    // Store sprite references so we can update tints when state changes.
+    // Store sprite references so the badge art can change when progress changes.
     this._checkpointSprites = {};
 
     levelCheckpoints.forEach((cp) => {
       // ── Visible sprite ──────────────────────────────────────────────────
       const themed = this.textures.exists('checkpoint');
+      const hasReferenceCheckpointArt = this.textures.exists(VISUAL_TEXTURES.checkpointActive) &&
+        this.textures.exists(VISUAL_TEXTURES.checkpointClaimed);
+      const isActive = this.game._activeCheckpoint?.id === cp.id;
+      const isPassed = this.game._activatedCheckpoints.has(cp.id);
       let sprite;
 
-      if (themed) {
+      if (hasReferenceCheckpointArt) {
+        const textureKey = isPassed && !isActive
+          ? VISUAL_TEXTURES.checkpointClaimed
+          : VISUAL_TEXTURES.checkpointActive;
+        sprite = this.add.image(cp.x, cp.y, textureKey)
+          .setDisplaySize(62, 68)
+          .setDepth(3);
+        sprite.setAlpha(isActive || isPassed ? 1 : 0.82);
+        sprite.setData('checkpointState', isActive ? 'active' : isPassed ? 'claimed' : 'unreached');
+      } else if (themed) {
         sprite = this.add.sprite(cp.x, cp.y, 'checkpoint')
           .setDisplaySize(36, 36)
           .setDepth(3);
@@ -894,25 +1041,17 @@ export default class MazeScene extends Phaser.Scene {
 
       // ── Set initial tint based on state ─────────────────────────────────
       //
-      // WHAT: Three visual states for checkpoints:
-      //   INACTIVE: not yet reached — dimmed (gray tint)
-      //   ACTIVE:   current respawn point — bright green glow
-      //   PASSED:   reached before but not the current respawn — yellow tint
-      //
-      // WHY tint instead of different images?
-      //   Tinting one image is simpler than loading 3 separate images.
-      //   Phaser's setTint() multiplies the texture color by the tint color
-      //   — so 0xffffff = original colors, 0x888888 = dimmed, 0x00ff00 = green.
-      const isActive = this.game._activeCheckpoint?.id === cp.id;
-      const isPassed = this.game._activatedCheckpoints.has(cp.id);
-
-      if (isActive) {
-        sprite.setTint(0x00ff66);       // bright green = current respawn
-      } else if (isPassed) {
-        sprite.setTint(0xffcc00);       // yellow = previously activated
-      } else {
-        sprite.setTint(0x666666);       // gray = not yet reached
-        sprite.setAlpha(0.6);
+      // Reference-art states use source-authored gold and green badges; the
+      // legacy texture fallback keeps the original tint behavior.
+      if (!hasReferenceCheckpointArt) {
+        if (isActive) {
+          sprite.setTint(0x00ff66);
+        } else if (isPassed) {
+          sprite.setTint(0xffcc00);
+        } else {
+          sprite.setTint(0x666666);
+          sprite.setAlpha(0.6);
+        }
       }
 
       this._checkpointSprites[cp.id] = sprite;
@@ -953,6 +1092,14 @@ export default class MazeScene extends Phaser.Scene {
     // all pointing right (facingAngle = 0°), so the player immediately sees
     // the initial facing direction before any move is made.
     this.setPreviewAngle(this.facingAngle);
+    startIdleAnimation(this.playerSprite, this._themed, this);
+
+    // React's lazy route fallback only covers module loading. Signal readiness
+    // after Phaser has actually drawn the scene so slow first loads never expose
+    // a blank canvas between those two lifecycle stages.
+    this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+      this.game._onSceneReady?.();
+    });
   }
 
   /**
@@ -965,7 +1112,6 @@ export default class MazeScene extends Phaser.Scene {
    * @param {number} delta  Time in ms since the last frame. Use this for frame-rate-
    *                        independent movement (e.g. speed × delta / 1000).
    */
-  // eslint-disable-next-line no-unused-vars
   update(time, delta) {
     // WHAT: Sync the visual sprite to the physics body's position.
     // WHY: The physics body (this.player) is invisible and controls movement.
@@ -975,14 +1121,73 @@ export default class MazeScene extends Phaser.Scene {
     // HOW: One-way copy every frame. Physics body is the source of truth.
     //   We do NOT sync angle — the sprite's angle is controlled by tweens
     //   (walk animation, turn animation), not by physics.
-    if (this.playerSprite) {
-      this.playerSprite.x = this.player.x;
-      this.playerSprite.y = this.player.y;
-    }
+    this._syncPlayerVisuals();
+    this.golemView?.facePosition(this.player.x, this.player.y, delta);
 
     const px = Math.round(this.player.x);
     const py = Math.round(this.player.y);
     this.coordText.setText(`x: ${px}  y: ${py}`);
+  }
+
+  _syncPlayerVisuals() {
+    if (!this.player) return;
+    if (this.playerSprite) {
+      this.playerSprite.setPosition(this.player.x, this.player.y);
+      this.playerSprite.setDepth(actorDepthForY(this.player.y));
+      this.playerSprite._groundShadow?.setPosition(this.player.x + 2, this.player.y + 18);
+      this.playerSprite._contactShadow?.setPosition(this.player.x, this.player.y + 17);
+    }
+    // This display-only overlay follows the body and has no physics body.
+    this.protractorView?.setPose(this.player.x, this.player.y, this.facingAngle);
+    this.exitVisual?.updateProximity?.(this.player.x, this.player.y);
+  }
+
+  _pathOverlapsGolem(startX, startY, endX, endY) {
+    return this._findGolemCollision(startX, startY, endX, endY) !== null;
+  }
+
+  _findGolemCollision(startX, startY, endX, endY) {
+    const angle = this.playerSprite?.rotation ?? (90 - this.facingAngle) * Math.PI / 180;
+    for (let golemIndex = 0; golemIndex < (this.golemCollisionShapes ?? []).length; golemIndex += 1) {
+      const shape = this.golemCollisionShapes[golemIndex];
+      const contact = sweptFootprintsContact({
+        startX,
+        startY,
+        endX,
+        endY,
+        playerAngle: angle,
+        playerFootprint: this.playerGolemFootprint,
+        targetX: shape.x,
+        targetY: shape.y,
+        targetFootprint: shape.footprint,
+      });
+      if (contact.overlaps) return { golemIndex, shape, ...contact };
+    }
+    return null;
+  }
+
+  _checkGolemCollision() {
+    if (!this.player) return;
+    const current = { x: this.player.x, y: this.player.y };
+    const previous = this._lastGolemCollisionPosition ?? current;
+    this._lastGolemCollisionPosition = current;
+    if (this.golemCollisionShapes?.length && !this.isResetting && !this.hasWon && this.isMoving) {
+      // Sweep the authoritative body path so a slow frame cannot tunnel past a
+      // golem; the test uses the measured player alpha footprint, not a radius.
+      const contact = this._findGolemCollision(previous.x, previous.y, current.x, current.y);
+      if (contact) this._onGolemHit(contact);
+    }
+    this.collisionDebugView?.update({
+      player: this.player,
+      playerBody: this.player.body,
+      playerAngle: this.facingAngle,
+      playerRotation: this.playerSprite?.rotation ?? (90 - this.facingAngle) * Math.PI / 180,
+      golemShapes: this.golemCollisionShapes,
+      wallGroup: this.wallGroup,
+      lastCollisionCause: this._lastCollisionCause,
+      lastCollisionDetails: this._lastCollisionDetails,
+      previousPosition: previous,
+    });
   }
 
   /**
@@ -1028,6 +1233,7 @@ export default class MazeScene extends Phaser.Scene {
     // after the move. player.x / player.y will change during the move.
     const startX = this.player.x;
     const startY = this.player.y;
+    this._lastGolemCollisionPosition = { x: startX, y: startY };
 
     // ── Degrees → Radians ─────────────────────────────────────────────────────
     //
@@ -1137,6 +1343,7 @@ export default class MazeScene extends Phaser.Scene {
       //   The angle is restored by setPreviewAngle() below, which calls
       //   updatePlayerRotation() to set the correct static facing angle.
       stopWalkAnimation(this.playerSprite, this.facingAngle, this._themed);
+      startSettleAnimation(this.playerSprite, this._themed, this);
 
       // Draw a permanent trail segment: start → where the player actually landed.
       // (May be shorter than `distance` if a wall stopped the player early.)
@@ -1154,6 +1361,7 @@ export default class MazeScene extends Phaser.Scene {
       this.setPreviewAngle(this.facingAngle);
 
       // Notify React with the final (x, y) so it can update the status line.
+      if (!this.hasWon && !this.isResetting) startIdleAnimation(this.playerSprite, this._themed, this);
       if (onComplete) onComplete(this.player.x, this.player.y);
     });
 
@@ -1193,10 +1401,13 @@ export default class MazeScene extends Phaser.Scene {
     if (this.hasWon || this.isMoving || this.isResetting) return undefined;
 
     // Add degrees (CCW). Double-modulo keeps result in [0, 360).
+    const previousFacing = this.facingAngle;
     this.facingAngle = ((this.facingAngle + degrees) % 360 + 360) % 360;
 
     // Immediately rotate the arrow, on-body triangle, and compass needle.
+    startTurnFeedback(this.playerSprite, this._themed, this);
     this.setPreviewAngle(this.facingAngle);
+    this.protractorView?.showTurn(previousFacing, degrees, this.facingAngle);
 
     return this.facingAngle;
   }
@@ -1227,11 +1438,25 @@ export default class MazeScene extends Phaser.Scene {
     if (this.hasWon || this.isMoving || this.isResetting) return undefined;
 
     // Subtract degrees (CW). Same double-modulo normalization.
+    const previousFacing = this.facingAngle;
     this.facingAngle = ((this.facingAngle - degrees) % 360 + 360) % 360;
 
+    startTurnFeedback(this.playerSprite, this._themed, this);
     this.setPreviewAngle(this.facingAngle);
+    this.protractorView?.showTurn(previousFacing, -degrees, this.facingAngle);
 
     return this.facingAngle;
+  }
+
+  setProtractorVisible(visible) {
+    this.game._protractorVisible = Boolean(visible) && !this.hasWon;
+    this.protractorView?.setVisible(this.game._protractorVisible);
+    this.game._onProtractorVisibilityChange?.(this.game._protractorVisible);
+  }
+
+  setProtractorScale(gameScale) {
+    this.game._gameScale = gameScale;
+    this.protractorView?.setScreenScale(gameScale);
   }
 
    /**
@@ -1255,8 +1480,29 @@ export default class MazeScene extends Phaser.Scene {
    *   Soft respawn keeps the trail visible, shows which checkpoints they've
    *   passed, and only costs 1 life — much more forgiving and educational.
    */
-  _onWallHit(_player, _wall) {
+  _onWallHit(_player, wall, cause = 'wall', golemContact = null) {
     if (this.isResetting || this.hasWon) return;
+
+    this._lastCollisionCause = cause;
+    const body = cause === 'wall' ? wall?.body : null;
+    this._lastCollisionDetails = {
+      player: { x: this.player.x, y: this.player.y },
+      object: cause === 'golem' && golemContact?.shape ? {
+        label: `golem ${golemContact.golemIndex + 1} alpha hull`,
+        x: golemContact.shape.x,
+        y: golemContact.shape.y,
+        width: golemContact.shape.footprint.halfWidth * 2,
+        height: golemContact.shape.footprint.halfHeight * 2,
+        progress: golemContact.progress,
+      } : body ? {
+        label: 'wall Arcade body',
+        x: body.center?.x ?? body.x + body.width / 2,
+        y: body.center?.y ?? body.y + body.height / 2,
+        width: body.width,
+        height: body.height,
+        radius: body.radius ?? null,
+      } : { label: cause, x: null, y: null },
+    };
 
     // ── Stop all motion ─────────────────────────────────────────────────
     this.player.body.setVelocity(0, 0);
@@ -1264,13 +1510,15 @@ export default class MazeScene extends Phaser.Scene {
     this._moveTimer = null;
     this.isMoving = false;
 
+    stopIdleAnimation(this.playerSprite);
     // WHAT: Stop walking animation on crash.
-    // WHY: The player hit a wall — the waddle should stop instantly,
+    // WHY: The player hit a wall — the movement cue should stop instantly,
     //   not continue rocking while the "Oops!" message shows.
     stopWalkAnimation(this.playerSprite, this.facingAngle, this._themed);
+    startImpactAnimation(this.playerSprite, this._themed, this);
 
     // ── Camera shake (both paths) ───────────────────────────────────────
-    this.cameras.main.shake(250, 0.007);
+    if (!this._reducedMotion) this.cameras.main.shake(250, 0.007);
 
     // ── Decrement lives ─────────────────────────────────────────────────
     this.game._lives -= 1;
@@ -1314,6 +1562,7 @@ export default class MazeScene extends Phaser.Scene {
         // Move player to respawn point
         this.player.setPosition(respawn.x, respawn.y);
         this.player.body.reset(respawn.x, respawn.y);
+        this._lastGolemCollisionPosition = { x: respawn.x, y: respawn.y };
         // Also move the sprite immediately (don't wait for next update frame)
         if (this.playerSprite) {
           this.playerSprite.setPosition(respawn.x, respawn.y);
@@ -1333,6 +1582,7 @@ export default class MazeScene extends Phaser.Scene {
         // Re-enable input
         this.isResetting = false;
         this._restartScheduled = false;
+        startIdleAnimation(this.playerSprite, this._themed, this);
         this.game._onRespawn?.(respawn.x, respawn.y);
       });
 
@@ -1404,6 +1654,12 @@ export default class MazeScene extends Phaser.Scene {
       // The only exit is restartGame() via the React "Start Over" button.
       // restartGame() already resets _lives to 5 and clears checkpoints.
     }
+  }
+
+  /** A stationary golem uses the same damage and respawn rules as a wall hit. */
+  _onGolemHit(contact) {
+    if (this.isResetting || this.hasWon) return;
+    this._onWallHit(null, null, 'golem', contact);
   }
 
   /**
@@ -1506,7 +1762,7 @@ export default class MazeScene extends Phaser.Scene {
    *   1. Set this checkpoint as the active respawn point.
    *   2. Add its ID to the activated set (for visual state tracking).
    *   3. Reset lives to 5.
-   *   4. Update all checkpoint sprite tints to reflect the new state.
+   *   4. Update checkpoint badge art and alpha to reflect the new state.
    *   5. Notify React to update the lives display.
    *   6. Show a brief "Checkpoint saved!" message on canvas.
    *
@@ -1522,20 +1778,26 @@ export default class MazeScene extends Phaser.Scene {
     this.game._activeCheckpoint = checkpoint;
     this.game._activatedCheckpoints.add(checkpoint.id);
 
-    // ── Update all checkpoint sprite tints ───────────────────────────────
+    // ── Update checkpoint badge art or fallback tints ────────────────────
     const levelCheckpoints = checkpointsByLevel[this.game._currentLevel] || [];
     levelCheckpoints.forEach((cp) => {
       const sprite = this._checkpointSprites[cp.id];
       if (!sprite) return;
 
-      if (cp.id === checkpoint.id) {
-        sprite.setTint(0x00ff66);     // bright green = active
+      if (this.textures.exists(VISUAL_TEXTURES.checkpointActive) &&
+          this.textures.exists(VISUAL_TEXTURES.checkpointClaimed)) {
+        const isActive = cp.id === checkpoint.id;
+        const isClaimed = this.game._activatedCheckpoints.has(cp.id) && !isActive;
+        sprite.setTexture(isClaimed ? VISUAL_TEXTURES.checkpointClaimed : VISUAL_TEXTURES.checkpointActive);
+        sprite.setAlpha(isActive || isClaimed ? 1 : 0.58);
+        sprite.setData('checkpointState', isActive ? 'active' : isClaimed ? 'claimed' : 'unreached');
+      } else if (cp.id === checkpoint.id) {
+        sprite.setTint(0x00ff66);
         sprite.setAlpha(1);
       } else if (this.game._activatedCheckpoints.has(cp.id)) {
-        sprite.setTint(0xffcc00);     // yellow = passed
+        sprite.setTint(0xffcc00);
         sprite.setAlpha(1);
       }
-      // Inactive checkpoints keep their gray tint (set in create).
     });
 
     // ── Notify React ────────────────────────────────────────────────────

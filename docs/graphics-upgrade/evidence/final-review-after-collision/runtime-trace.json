@@ -1,0 +1,55 @@
+{
+  "startedAt": "2026-11-05T03:08:55.336Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 58796,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:58796/devtools/browser/211b3dde-bdcd-4c00-a34b-5c4070045a5d"
+  },
+  "browserTargets": [
+    {
+      "id": "CE3D2061634D21761F8865531A460659",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "9389366EBBDCDE6939CC532B4C6625E0",
+      "type": "page",
+      "title": "about:blank",
+      "url": "about:blank"
+    },
+    {
+      "id": "D9F3B98AF73854D26C0EF5C2DC35BB13",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "CF1C3689A3200F50EAE8D09E4D925844",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: ReferenceError: anglemazeBaseline is not defined\n    at <anonymous>:1:1\n    at CDP.evaluate (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:83:40)\n    at async file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:240:5\n    at async scenario (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:125:18)\n    at async file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:239:3",
+  "apiRequests": []
+}

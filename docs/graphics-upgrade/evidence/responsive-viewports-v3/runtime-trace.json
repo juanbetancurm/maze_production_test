@@ -1,0 +1,150 @@
+{
+  "startedAt": "2026-11-06T00:12:48.201Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "react-responsive-viewports",
+      "result": [
+        {
+          "name": "phone-360x800",
+          "width": 360,
+          "height": 800,
+          "mobile": true,
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "canvasCount": 1,
+          "documentWidth": 360,
+          "canvas": {
+            "left": 16,
+            "right": 344,
+            "width": 328,
+            "height": 246
+          },
+          "ready": true,
+          "pass": true
+        },
+        {
+          "name": "tablet-768x1024",
+          "width": 768,
+          "height": 1024,
+          "mobile": false,
+          "viewport": {
+            "width": 768,
+            "height": 1024
+          },
+          "canvasCount": 1,
+          "documentWidth": 753,
+          "canvas": {
+            "left": 66.5,
+            "right": 686.5,
+            "width": 620,
+            "height": 465
+          },
+          "ready": true,
+          "pass": true
+        },
+        {
+          "name": "phone-landscape-844x390",
+          "width": 844,
+          "height": 390,
+          "mobile": true,
+          "viewport": {
+            "width": 844,
+            "height": 390
+          },
+          "canvasCount": 1,
+          "documentWidth": 844,
+          "canvas": {
+            "left": 215.33334350585938,
+            "right": 628.6666259765625,
+            "width": 413.3332824707031,
+            "height": 310
+          },
+          "ready": true,
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.",
+    "Headless Chrome frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Five-minute active-use and real-device coverage remain unmeasured in this initial run."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/App.jsx\nfrontend/src/context/GameContext.jsx\nfrontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/AdminPage.jsx\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 59445,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:59445/devtools/browser/c58667b4-bfa2-4a22-b05a-8a2a95450ba5"
+  },
+  "browserTargets": [
+    {
+      "id": "88B266C280DCC81F97CF1B90FE61385E",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "71AD3E07211EA1D4B864350612DA4963",
+      "type": "page",
+      "title": "about:blank",
+      "url": "about:blank"
+    },
+    {
+      "id": "1F546095BBBDD0F55EEF3C5EEDEF29C5",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "A458E051EC35037C65C32E23838CC209",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "finishedAt": "2026-11-06T00:12:56.617Z",
+  "apiRequests": [
+    {
+      "at": "2026-11-06T00:12:50.680Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:12:50.681Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:12:50.871Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-06T00:12:50.872Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    }
+  ]
+}

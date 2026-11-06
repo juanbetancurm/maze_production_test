@@ -1,0 +1,7 @@
+# Player turn, impact and settle feedback
+
+Implemented three display-only responses on the player sprite: a brief horizontal squash at turn start, a squash/recovery on wall impact, and a small horizontal rebound when travel ends. They return to authored sprite dimensions and stop when reduced motion is enabled. Walking cancels turn/settle feedback before its own scale animation. None of the effects reads or writes the Arcade body, facing math, move count, collision response, or lives.
+
+Browser verification is **pending**. Focused runs on 2026-11-03 timed out before any test scenario executed. Chrome exposes an `about:blank` page target and accepts browser-level target attachment, but page-session commands (`Page.enable`, and `Runtime.enable` after attachment) receive no response. The latest [CDP diagnostic trace](../cdp-diagnostic/runtime-trace.json) records the browser targets and setup failure. The runner now requests a free debugging port; the session timeout persists. Build and Node syntax checks passed. The previous successful full browser run predates these effects and is recorded at [final idle regression](../final-idle-regression/README.md).
+
+**Superseded status (2026-11-05):** the focused seven-scenario Chrome run completed successfully after the above attempts. It included Level 1 wall impact/respawn and the current Level 2 collision/tracking checks, with no browser errors. See the [current focused regression evidence](../final-review-after-collision-retry/README.md); this older trace remains as a record of the earlier setup failure.

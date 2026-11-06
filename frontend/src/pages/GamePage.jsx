@@ -26,7 +26,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import config from '../game/config.js';
-import { normalizeProgressResponse, useGame } from '../context/GameContext';
+import { normalizeProgressResponse } from '../context/progress.js';
+import { useGame } from '../context/useGame.js';
 import { completeLevel as saveCompletedLevel } from '../lib/api';
 
 function formatElapsedTime(totalSeconds) {
@@ -51,6 +52,23 @@ function getViewportHeight() {
   return window.innerHeight;
 }
 
+function getResponsiveGameScale(width, height) {
+  const compact = width <= 980;
+  const phone = width <= 640;
+  const shortLandscape = compact && width > height && height <= 500;
+  const maxCanvasWidth = phone
+    ? Math.max(280, Math.min(width - 32, 420))
+    : compact
+      ? Math.max(360, Math.min(width - 48, 620))
+      : 800;
+  const maxCanvasHeight = compact
+    ? shortLandscape
+      ? Math.max(300, height - 80)
+      : Math.max(220, height - (phone ? 360 : 280))
+    : Math.max(320, height - 140);
+  return Math.min(1, maxCanvasWidth / 800, maxCanvasHeight / 600);
+}
+
 const MOBILE_INCREMENT_OPTIONS = [10, 30, 45, 100];
 
 export default function GamePage() {
@@ -73,7 +91,7 @@ export default function GamePage() {
   const teamRef = useRef(team);
   const moveCountRef = useRef(0);
   const livesRef = useRef(5);
-  const levelStartTimeRef = useRef(Date.now());
+  const levelStartTimeRef = useRef(null);
   const elapsedSecondsRef = useRef(0);
 
   // ── State ─────────────────────────────────────────────────────────────────────
@@ -92,6 +110,8 @@ export default function GamePage() {
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [viewportHeight, setViewportHeight] = useState(getViewportHeight);
   const [mobileQuantity, setMobileQuantity] = useState(0);
+  const [protractorEnabled, setProtractorEnabled] = useState(false);
+  const [gameReady, setGameReady] = useState(false);
 
    /**
    * WHAT: Remaining lives before checkpoint is lost.
@@ -107,14 +127,6 @@ export default function GamePage() {
    */
   const [checkpointMsg, setCheckpointMsg] = useState('');
 
-  /**
-   * currentLevel — which maze the player is on (1 or 2).
-   * WHY in React state?
-   *   The Phaser scene stores the level on this.game._currentLevel (survives
-   *   scene restarts). But React needs its OWN copy to update the UI —
-   *   highlighting the active level button and showing the level name.
-   */
-  const [currentLevel, setCurrentLevel] = useState(levelNumber);
   /**
    * disabled — true while buttons should be non-interactive:
    *   • During a goForward animation (player is mid-move).
@@ -165,6 +177,7 @@ export default function GamePage() {
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
+      if (!levelStartTimeRef.current) return;
       const nextElapsedSeconds = Math.max(
         0,
         Math.floor((Date.now() - levelStartTimeRef.current) / 1000)
@@ -177,8 +190,15 @@ export default function GamePage() {
 
   useEffect(() => {
     function handleResize() {
-      setViewportWidth(getViewportWidth());
-      setViewportHeight(getViewportHeight());
+      const width = getViewportWidth();
+      const height = getViewportHeight();
+      setViewportWidth(width);
+      setViewportHeight(height);
+      const scale = getResponsiveGameScale(width, height);
+      if (gameRef.current) {
+        gameRef.current._gameScale = scale;
+        gameRef.current.scene.getScene('MazeScene')?.setProtractorScale?.(scale);
+      }
     }
 
     window.addEventListener('resize', handleResize);
@@ -191,6 +211,8 @@ export default function GamePage() {
     if (gameRef.current !== null) return; // React 18 StrictMode double-mount guard
 
     gameRef.current = new Phaser.Game(config);
+    gameRef.current._protractorVisible = false;
+    gameRef.current._gameScale = getResponsiveGameScale(getViewportWidth(), getViewportHeight());
 
     // WHAT: Tell Phaser which level to load BEFORE the game starts.
     // WHY: The game reads _currentLevel in create(). If we set it
@@ -224,6 +246,15 @@ export default function GamePage() {
     gameRef.current._onCrash = () => {
       setDisabled(true);
     };
+
+    gameRef.current._onProtractorVisibilityChange = (visible) => {
+      setProtractorEnabled(Boolean(visible));
+    };
+
+    // Keep the canvas covered until Phaser has rendered its first complete frame.
+    // React.lazy only signals that the GamePage module loaded, which can precede
+    // Phaser's asset loading and scene creation by a noticeable interval.
+    gameRef.current._onSceneReady = () => setGameReady(true);
 
     /**
      * _onReset(wasRestart) — called at the start of MazeScene.create()
@@ -275,9 +306,6 @@ export default function GamePage() {
       setElapsedSeconds(0);
       setLives(gameRef.current?._lives ?? 5);
       setCheckpointMsg('');
-
-      const level = gameRef.current?._currentLevel ?? 1;
-      setCurrentLevel(levelNumber);
 
       if (wasRestart) {
         setEncourageMsg('Try again! You got this!');
@@ -369,11 +397,18 @@ export default function GamePage() {
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
-  }, []);
+  }, [completeLevel, levelNumber, navigate]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
   const getScene = () => gameRef.current?.scene.getScene('MazeScene') ?? null;
+
+  const toggleProtractor = () => {
+    const enabled = !protractorEnabled;
+    setProtractorEnabled(enabled);
+    if (gameRef.current) gameRef.current._protractorVisible = enabled;
+    getScene()?.setProtractorVisible?.(enabled);
+  };
 
   /**
    * facingLabel(angle) — maps well-known angles to friendly direction words.
@@ -531,23 +566,10 @@ export default function GamePage() {
     getScene()?.restartGame();
   };
 
-  /**
-   * handleLevelSwitch(level)
-   *
-   * WHAT: Switches to a different maze level.
-   * WHY: Lets the kid choose between the easy level (90° turns only)
-   *   and the hard level (diagonal walls, non-90° turns).
-   * HOW: Calls setLevel() on the Phaser scene, which stores the level
-   *   on the Game object and restarts the scene. The _onReset callback
-   *   then syncs React's state.
-   */
-  const handleLevelSwitch = (level) => {
-    getScene()?.setLevel(level);
-  };
-
   if (isHydrating || !team || !canPlayLevel) {
     return (
       <div
+        className="maze-experience maze-loading-screen"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -555,8 +577,6 @@ export default function GamePage() {
           justifyContent: 'center',
           minHeight: '100vh',
           padding: '24px',
-          fontFamily: 'monospace',
-          color: '#99aabb',
         }}
       >
         Loading level...
@@ -566,15 +586,7 @@ export default function GamePage() {
 
   const isCompactLayout = viewportWidth <= 980;
   const isPhoneLayout = viewportWidth <= 640;
-  const maxCanvasWidth = isPhoneLayout
-    ? Math.max(280, Math.min(viewportWidth - 32, 420))
-    : isCompactLayout
-      ? Math.max(360, Math.min(viewportWidth - 48, 620))
-      : 800;
-  const maxCanvasHeight = isCompactLayout
-    ? Math.max(220, viewportHeight - (isPhoneLayout ? 360 : 280))
-    : Math.max(320, viewportHeight - 140);
-  const gameScale = Math.min(1, maxCanvasWidth / 800, maxCanvasHeight / 600);
+  const gameScale = getResponsiveGameScale(viewportWidth, viewportHeight);
   const gameViewportWidth = Math.round(800 * gameScale);
   const gameViewportHeight = Math.round(600 * gameScale);
 
@@ -613,7 +625,7 @@ export default function GamePage() {
   //   against the maze canvas height.
 
   return (
-    <div style={{
+    <div className="maze-experience maze-game-page" style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -624,12 +636,13 @@ export default function GamePage() {
     }}>
 
       {/* ── Header (spans full width) ──────────────────────────────────────── */}
-      <h1 className="maze-page-title" style={{
-        fontSize: isPhoneLayout ? 'clamp(1.6rem, 7vw, 2.2rem)' : 'clamp(2rem, 4vw, 3rem)',
-        marginBottom: '12px',
-      }}>
-       🧱 AngleMaze — Move with Math! 🧱
-      </h1>
+      <header className="maze-game-header">
+        <div>
+          <h1 className="maze-page-title"><span>Angle</span>Maze</h1>
+          <p className="maze-brand-tagline">Move with Math!</p>
+        </div>
+        <p className="maze-current-level">Level <strong>{levelNumber}</strong></p>
+      </header>
 
       
       {/* ── Side-by-side row: maze (left) + controls (right) ──────────────── */}
@@ -668,6 +681,7 @@ export default function GamePage() {
         >
           <div
             style={{
+              position: 'relative',
               width: '800px',
               height: '600px',
               transform: `scale(${gameScale})`,
@@ -676,6 +690,16 @@ export default function GamePage() {
             }}
           >
             <div id="game-container" style={{ flexShrink: 0 }} />
+            <div
+              data-game-ready={gameReady ? 'true' : 'false'}
+              className="maze-scene-loading"
+              role={gameReady ? undefined : 'status'}
+              aria-live="polite"
+              aria-hidden={gameReady ? 'true' : undefined}
+              style={{ display: gameReady ? 'none' : 'flex' }}
+            >
+              Preparing maze...
+            </div>
           </div>
         </div>
 
@@ -697,7 +721,7 @@ export default function GamePage() {
           {/* ── Forward card (green) ───────────────────────────────────────── */}
           {isPhoneLayout && (
             <div className="maze-mobile-console">
-              <div className="maze-mobile-display">
+              <label className="maze-mobile-display">
                 <span className="maze-mobile-display-label">Quantity</span>
                 <input
                   type="number"
@@ -710,7 +734,8 @@ export default function GamePage() {
                   placeholder="0"
                   className="maze-mobile-display-input"
                 />
-              </div>
+                <span className="maze-mobile-display-hint">Pixels forward · Degrees to turn</span>
+              </label>
 
               <div className="maze-mobile-action-row">
                 <button
@@ -760,6 +785,14 @@ export default function GamePage() {
                   Clear
                 </button>
               </div>
+              <button
+                type="button"
+                className="maze-protractor-toggle"
+                aria-pressed={protractorEnabled}
+                onClick={toggleProtractor}
+              >
+                {protractorEnabled ? 'Hide Protractor' : 'Protractor'}
+              </button>
             </div>
           )}
 
@@ -872,8 +905,19 @@ export default function GamePage() {
             onClick={handleStartOver}
             className="maze-btn-reset"
           >
-            🔄💀 Start Over
+            ↻ Start Over
           </button>
+
+          {!isPhoneLayout && (
+            <button
+              type="button"
+              className="maze-protractor-toggle"
+              aria-pressed={protractorEnabled}
+              onClick={toggleProtractor}
+            >
+              {protractorEnabled ? 'Hide Protractor' : 'Protractor'}
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -907,7 +951,7 @@ export default function GamePage() {
             padding: isPhoneLayout ? '16px 18px' : '18px 20px',
           }}>
             <div className="maze-game-status-row"><span>Position</span><strong>({position.x}, {position.y})</strong></div>
-            <div>Facing: {facingAngle}°{facingLabel(facingAngle)}</div>
+            <div className="maze-game-status-row"><span>Facing</span><strong>{facingAngle}°{facingLabel(facingAngle)}</strong></div>
             <div className="maze-game-status-row"><span>Moves</span><strong>{moveCount}</strong></div>
             <div className="maze-game-status-row"><span>Time</span><strong>{formatElapsedTime(elapsedSeconds)}</strong></div>
 
@@ -920,10 +964,10 @@ export default function GamePage() {
               HOW: String.repeat() creates the right number of each character.
                 Color shifts from green (5 lives) to yellow (3) to red (1).
             */}
-            <div className="maze-game-lives" style={{
+            <div className="maze-game-lives" role="img" aria-label={`${lives} of 5 lives remaining`} style={{
               color: lives >= 4 ? 'var(--maze-accent-success)' : lives >= 2 ? 'var(--maze-accent-warning)' : 'var(--maze-accent-danger)',
             }}>
-              {'❤️'.repeat(lives)}{'🖤'.repeat(5 - lives)}
+              <span aria-hidden="true">{'♥'.repeat(lives)}{'♡'.repeat(5 - lives)}</span>
             </div>
 
             {/* ── Checkpoint message ─────────────────────────────────────── */}

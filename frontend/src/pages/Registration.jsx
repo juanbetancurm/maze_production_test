@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../context/GameContext';
+import { useGame } from '../context/useGame.js';
 import { createTeam } from '../lib/api';
 
 const INSTRUCTIONS_STORAGE_KEY = 'anglemaze:instructionsSeen';
@@ -79,7 +79,7 @@ export default function Registration() {
   if (isHydrating) {
     return (
       <div
-        className="maze-page-shell"
+        className="maze-experience maze-page-shell maze-registration-page"
       >
         Restoring saved team...
       </div>
@@ -88,12 +88,12 @@ export default function Registration() {
 
   return (
     <div
-      className="maze-page-shell"
+      className="maze-experience maze-page-shell maze-registration-page"
     >
       {showInstructions && (
         <div className="maze-modal-overlay">
-          <div className="maze-card maze-card-soft maze-modal-card">
-            <h2 className="maze-modal-title">Instructions</h2>
+          <div className="maze-card maze-card-soft maze-modal-card" role="dialog" aria-modal="true" aria-labelledby="maze-instructions-title">
+            <h2 className="maze-modal-title" id="maze-instructions-title">Instructions</h2>
             <p className="maze-modal-copy">
               Guide your character through the maze using distance and angle commands. Fewer moves and faster times win!
             </p>
@@ -127,9 +127,10 @@ export default function Registration() {
       <h1
         className="maze-page-title"
       >
-        AngleMaze
+        <span>Angle</span>Maze
       </h1>
 
+      <p className="maze-brand-tagline">Move with Math!</p>
       <p className="maze-page-subtitle">
         Register your team to start playing
       </p>
@@ -150,6 +151,7 @@ export default function Registration() {
         </a>
       </div>
 
+      <section className="maze-card maze-registration-panel" aria-label="Team registration">
       {team && (
         <div
           className="maze-card maze-session-card"
@@ -186,12 +188,14 @@ export default function Registration() {
               value={name}
               onChange={(event) => handleMemberChange(index, event.target.value)}
               placeholder={`Member ${index + 1}`}
+              aria-label={`Team member ${index + 1}`}
               className="maze-text-field"
             />
             {members.length > 1 && (
               <button
                 onClick={() => removeMember(index)}
                 disabled={isSubmitting}
+                aria-label={`Remove member ${index + 1}`}
                 className="maze-inline-btn maze-inline-btn-danger"
               >
                 X
@@ -214,8 +218,9 @@ export default function Registration() {
       <div
         className="maze-field-stack"
       >
-        <label className="maze-section-label">Course</label>
+        <label className="maze-section-label" htmlFor="team-course">Course</label>
         <select
+          id="team-course"
           value={course}
           onChange={(event) => setCourse(event.target.value)}
           disabled={isSubmitting}
@@ -239,6 +244,7 @@ export default function Registration() {
       >
         {isSubmitting ? 'Saving Team...' : 'Start Game'}
       </button>
+      </section>
     </div>
   );
 }

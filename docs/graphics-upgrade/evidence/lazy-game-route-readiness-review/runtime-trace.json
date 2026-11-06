@@ -1,0 +1,267 @@
+{
+  "startedAt": "2026-11-05T13:30:48.222Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "react-registration-instructions",
+      "result": {
+        "url": "http://127.0.0.1:4178/",
+        "text": "Instructions\n\nGuide your character through the maze using distance and angle commands. Fewer moves and faster times win!\n\n1. Register your team and course to begin.\n2. Enter a distance (in pixels) and press Forward to move.\n3. Enter an angle (in degrees) and press Turn Left or Turn Right to change direction.\n4. Hitting a wall restarts the level. Reach the exit to save your score!\nStart playing!\nAngleMaze\n\nMove with Math!\n\nRegister your team to start playing\n\nView Instructions\nBack to Games\nTEAM MEMBERS\nX\nX\n+ Add member\nCOURSE\nSelect your course...\n8A\n8B\n8C\nStart Game",
+        "gameModules": []
+      }
+    },
+    {
+      "name": "react-level1-desktop",
+      "result": {
+        "url": "http://127.0.0.1:4178/game/1",
+        "canvasCount": 1,
+        "text": "AngleMaze\n\nMove with Math!\n\nLevel\n1\n\nDISTANCE\npx\n▲ Forward\nDEGREES\n°\n↰ Turn Left\nTurn Right ↱\n↻ Start Over\nProtractor\n← Back to Menu\nBack to Games\nPosition\n(60, 60)\nFacing\n0° — right\nMoves\n0\nTime\n0:01\n♥♥♥♥♥",
+        "gameReady": true,
+        "layout": {
+          "shell": {
+            "x": 160,
+            "y": 97.703125,
+            "width": 800,
+            "height": 602,
+            "top": 97.703125,
+            "right": 960,
+            "bottom": 699.703125,
+            "left": 160
+          },
+          "wrapper": {
+            "x": 160,
+            "y": 98.703125,
+            "width": 800,
+            "height": 600,
+            "top": 98.703125,
+            "right": 960,
+            "bottom": 698.703125,
+            "left": 160
+          },
+          "container": {
+            "x": 160,
+            "y": 98.703125,
+            "width": 800,
+            "height": 607.59375,
+            "top": 98.703125,
+            "right": 960,
+            "bottom": 706.296875,
+            "left": 160
+          },
+          "canvas": {
+            "x": 160,
+            "y": 98.703125,
+            "width": 800,
+            "height": 600,
+            "top": 98.703125,
+            "right": 960,
+            "bottom": 698.703125,
+            "left": 160
+          },
+          "wrapperCss": {
+            "width": "800px",
+            "height": "600px",
+            "marginTop": "0px",
+            "marginBottom": "0px",
+            "position": "relative",
+            "transform": "matrix(1, 0, 0, 1, 0, 0)"
+          },
+          "containerCss": {
+            "width": "800px",
+            "height": "607.594px",
+            "marginTop": "0px",
+            "marginBottom": "0px",
+            "position": "static",
+            "transform": "none"
+          },
+          "canvasCss": {
+            "width": "800px",
+            "height": "600px",
+            "marginTop": "0px",
+            "marginBottom": "0px",
+            "position": "static",
+            "transform": "none"
+          }
+        },
+        "gameModules": [
+          "http://127.0.0.1:4178/node_modules/.vite/deps/phaser.js?v=a30b4330",
+          "http://127.0.0.1:4178/src/game/config.js",
+          "http://127.0.0.1:4178/src/game/scenes/MazeScene.js"
+        ]
+      }
+    },
+    {
+      "name": "react-level2-phone",
+      "result": {
+        "url": "http://127.0.0.1:4178/game/2",
+        "canvasCount": 1,
+        "text": "AngleMaze\n\nMove with Math!\n\nLevel\n2\n\nQUANTITY\nPixels forward · Degrees to turn\n↺\nTurn Left\n↑\nForward\n↻\nTurn Right\n+10\n+30\n+45\n+100\nClear\nProtractor\n↻ Start Over\n← Back to Menu\nBack to Games\nPosition\n(740, 60)\nFacing\n180° — left\nMoves\n0\nTime\n0:00\n♥♥♥♥♥",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "layout": {
+          "shell": {
+            "x": 16,
+            "y": 81.609375,
+            "width": 358,
+            "height": 271,
+            "top": 81.609375,
+            "right": 374,
+            "bottom": 352.609375,
+            "left": 16
+          },
+          "wrapper": {
+            "x": 16,
+            "y": 82.609375,
+            "width": 358,
+            "height": 268.5,
+            "top": 82.609375,
+            "right": 374,
+            "bottom": 351.109375,
+            "left": 16
+          },
+          "container": {
+            "x": 16,
+            "y": 82.609375,
+            "width": 358,
+            "height": 271.898193359375,
+            "top": 82.609375,
+            "right": 374,
+            "bottom": 354.507568359375,
+            "left": 16
+          },
+          "canvas": {
+            "x": 16,
+            "y": 82.609375,
+            "width": 358,
+            "height": 268.5,
+            "top": 82.609375,
+            "right": 374,
+            "bottom": 351.109375,
+            "left": 16
+          },
+          "canvasBitmap": {
+            "width": 800,
+            "height": 600
+          },
+          "wrapperCss": {
+            "width": "800px",
+            "height": "600px",
+            "marginTop": "0px",
+            "marginLeft": "0px",
+            "position": "relative",
+            "transform": "matrix(0.4475, 0, 0, 0.4475, 0, 0)"
+          },
+          "containerCss": {
+            "width": "800px",
+            "height": "607.594px",
+            "marginTop": "0px",
+            "marginLeft": "0px",
+            "position": "static",
+            "transform": "none"
+          },
+          "canvasCss": {
+            "width": "800px",
+            "height": "600px",
+            "marginTop": "0px",
+            "marginLeft": "0px",
+            "position": "static",
+            "transform": "none"
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.",
+    "Headless Chrome frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Five-minute active-use and real-device coverage remain unmeasured in this initial run."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/App.jsx\nfrontend/src/game/config.js\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 58967,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:58967/devtools/browser/104156b4-33ab-4cb8-b77b-3cf7b1ff0746"
+  },
+  "browserTargets": [
+    {
+      "id": "F495EE143A3E3431BDC5D0A00EC83C3A",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "88C0457746690E84E3D3CACCDEF0B943",
+      "type": "page",
+      "title": "about:blank",
+      "url": "about:blank"
+    },
+    {
+      "id": "16D127EBF7EA05D0E9080B49F7F2DDF9",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "168C7310F04C520DB6537A9FEA0BDDF9",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "finishedAt": "2026-11-05T13:30:58.023Z",
+  "apiRequests": [
+    {
+      "at": "2026-11-05T13:30:50.934Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-05T13:30:50.935Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-05T13:30:55.077Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-05T13:30:55.078Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-05T13:30:55.778Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-05T13:30:55.781Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    }
+  ]
+}

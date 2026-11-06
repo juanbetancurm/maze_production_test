@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../context/GameContext';
+import { useGame } from '../context/useGame.js';
 import { getLeaderboard } from '../lib/api';
 
 const LEVELS = [
@@ -58,11 +58,7 @@ export default function LevelMenu() {
     if (!team) return;
 
     const completedLevels = LEVELS.filter((level) => levelProgress[level.num]?.completed);
-    if (completedLevels.length === 0) {
-      setLeaderboards({});
-      setLeaderboardErrors({});
-      return;
-    }
+    if (completedLevels.length === 0) return;
 
     let cancelled = false;
 
@@ -107,15 +103,16 @@ export default function LevelMenu() {
 
   if (isHydrating) {
     return (
-      <div className="maze-page-shell">
+      <div className="maze-experience maze-page-shell maze-level-page">
         Restoring saved team...
       </div>
     );
   }
 
   return (
-    <div className="maze-page-shell">
-      <h1 className="maze-page-title">AngleMaze</h1>
+    <div className="maze-experience maze-page-shell maze-level-page">
+      <h1 className="maze-page-title"><span>Angle</span>Maze</h1>
+      <p className="maze-brand-tagline">Move with Math!</p>
 
       {hydrateError && (
         <p className="maze-status-error">{hydrateError}</p>
@@ -129,7 +126,7 @@ export default function LevelMenu() {
 
       <a
         href="https://www.labolavs.com/category/games"
-        className="maze-pill-btn"
+        className="maze-pill-btn maze-menu-back"
       >
         Back to Games
       </a>
@@ -168,13 +165,14 @@ export default function LevelMenu() {
               >
                 <div className="maze-level-head">
                   <span className="maze-level-title">
-                    Level {level.num} - {level.name}
+                    <span className="maze-level-number">Level {level.num}</span>
+                    {level.name}
                   </span>
 
                   <span
                     className={`maze-level-badge${isLocked ? ' is-locked' : ''}${isCompleted ? ' is-completed' : ''}`}
                   >
-                    {isCompleted ? 'OK' : isLocked ? 'LOCK' : 'GO'}
+                    {isCompleted ? 'Complete' : isLocked ? 'Locked' : 'Play →'}
                   </span>
                 </div>
 

@@ -1,0 +1,279 @@
+{
+  "startedAt": "2026-11-03T20:37:17.748Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "player-walk-atlas-motion",
+      "result": {
+        "accepted": true,
+        "before": {
+          "level": 1,
+          "themed": true,
+          "angle": 0,
+          "x": 60,
+          "y": 60,
+          "spriteX": 60,
+          "spriteY": 60,
+          "playerTexture": "premium.player.walk",
+          "playerFrame": 0,
+          "playerAnimation": null,
+          "playerAnimationPlaying": false,
+          "playerBody": {
+            "x": 50,
+            "y": 50,
+            "width": 20,
+            "height": 20,
+            "cx": 60,
+            "cy": 60,
+            "texture": null,
+            "type": "Rectangle"
+          },
+          "moving": false,
+          "resetting": false,
+          "won": false,
+          "reducedMotion": false,
+          "lives": 5,
+          "checkpoint": null,
+          "renderer": "WebGL",
+          "world": {
+            "width": 800,
+            "height": 600
+          },
+          "resources": {
+            "displayObjects": 67,
+            "staticBodies": 16,
+            "dynamicBodies": 1,
+            "textures": 38,
+            "activeTweens": 2,
+            "sceneListeners": {
+              "start": 12,
+              "destroy": 13,
+              "shutdown": 14,
+              "update": 5,
+              "preupdate": 3,
+              "transitionstart": 1,
+              "transitionout": 1,
+              "transitioncomplete": 1,
+              "pause": 1,
+              "sleep": 1,
+              "postupdate": 2
+            }
+          }
+        },
+        "moving": {
+          "level": 1,
+          "themed": true,
+          "angle": 0,
+          "x": 130,
+          "y": 60,
+          "spriteX": 130,
+          "spriteY": 60,
+          "playerTexture": "premium.player.walk",
+          "playerFrame": 1,
+          "playerAnimation": "premium.player.walk.loop",
+          "playerAnimationPlaying": true,
+          "playerBody": {
+            "x": 120,
+            "y": 50,
+            "width": 20,
+            "height": 20,
+            "cx": 130,
+            "cy": 60,
+            "texture": null,
+            "type": "Rectangle"
+          },
+          "moving": true,
+          "resetting": false,
+          "won": false,
+          "reducedMotion": false,
+          "lives": 5,
+          "checkpoint": null,
+          "renderer": "WebGL",
+          "world": {
+            "width": 800,
+            "height": 600
+          },
+          "resources": {
+            "displayObjects": 67,
+            "staticBodies": 16,
+            "dynamicBodies": 1,
+            "textures": 38,
+            "activeTweens": 3,
+            "sceneListeners": {
+              "start": 12,
+              "destroy": 13,
+              "shutdown": 14,
+              "update": 5,
+              "preupdate": 3,
+              "transitionstart": 1,
+              "transitionout": 1,
+              "transitioncomplete": 1,
+              "pause": 1,
+              "sleep": 1,
+              "postupdate": 2
+            }
+          }
+        },
+        "idle": {
+          "level": 1,
+          "themed": true,
+          "angle": 0,
+          "x": 210,
+          "y": 60,
+          "spriteX": 210,
+          "spriteY": 60,
+          "playerTexture": "premium.player.walk",
+          "playerFrame": 0,
+          "playerAnimation": "premium.player.walk.loop",
+          "playerAnimationPlaying": false,
+          "playerBody": {
+            "x": 200,
+            "y": 50,
+            "width": 20,
+            "height": 20,
+            "cx": 210,
+            "cy": 60,
+            "texture": null,
+            "type": "Rectangle"
+          },
+          "moving": false,
+          "resetting": false,
+          "won": false,
+          "reducedMotion": false,
+          "lives": 5,
+          "checkpoint": null,
+          "renderer": "WebGL",
+          "world": {
+            "width": 800,
+            "height": 600
+          },
+          "resources": {
+            "displayObjects": 67,
+            "staticBodies": 16,
+            "dynamicBodies": 1,
+            "textures": 38,
+            "activeTweens": 2,
+            "sceneListeners": {
+              "start": 12,
+              "destroy": 13,
+              "shutdown": 14,
+              "update": 5,
+              "preupdate": 3,
+              "transitionstart": 1,
+              "transitionout": 1,
+              "transitioncomplete": 1,
+              "pause": 1,
+              "sleep": 1,
+              "postupdate": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "react-level2-phone",
+      "result": {
+        "url": "http://127.0.0.1:4178/game/2",
+        "canvasCount": 1,
+        "text": "AngleMaze\n\nMove with Math!\n\nLevel\n2\n\nQUANTITY\nPixels forward · Degrees to turn\n↺\nTurn Left\n↑\nForward\n↻\nTurn Right\n+10\n+30\n+45\n+100\nClear\nProtractor\n↻ Start Over\n← Back to Menu\nBack to Games\nPosition\n(740, 60)\nFacing\n180° — left\nMoves\n0\nTime\n0:01\n♥♥♥♥♥",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        }
+      }
+    },
+    {
+      "name": "react-phone-protractor-toggle",
+      "result": {
+        "before": {
+          "label": "Protractor",
+          "pressed": "false",
+          "position": "(740, 60)",
+          "facing": "180° — left",
+          "moves": "0"
+        },
+        "enabled": {
+          "label": "Hide Protractor",
+          "pressed": "true",
+          "position": "(740, 60)",
+          "facing": "180° — left",
+          "moves": "0"
+        },
+        "afterTurn": {
+          "label": "Hide Protractor",
+          "pressed": "true",
+          "position": "(740, 60)",
+          "facing": "225° — lower-left",
+          "moves": "1"
+        },
+        "afterRestart": {
+          "label": "Hide Protractor",
+          "pressed": "true",
+          "position": "(740, 60)",
+          "facing": "180° — left",
+          "moves": "0"
+        },
+        "disabled": {
+          "label": "Protractor",
+          "pressed": "false",
+          "position": "(740, 60)",
+          "facing": "180° — left",
+          "moves": "0"
+        },
+        "canvasCount": 1
+      }
+    }
+  ],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.",
+    "Headless Chrome frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Five-minute active-use and real-device coverage remain unmeasured in this initial run."
+  ],
+  "head": "4623bc55a49873e2b8565e65d90d470e541068c8",
+  "trackedDiffBefore": "frontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/index.css\nfrontend/src/pages/GamePage.jsx\nfrontend/src/pages/LevelMenu.jsx\nfrontend/src/pages/Registration.jsx",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:9224/devtools/browser/93bc9500-f7fc-47d6-b40b-781d89a7d725"
+  },
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "finishedAt": "2026-11-03T20:37:28.556Z",
+  "apiRequests": [
+    {
+      "at": "2026-11-03T20:37:24.488Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-03T20:37:24.489Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-03T20:37:24.670Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l2",
+      "body": null
+    },
+    {
+      "at": "2026-11-03T20:37:24.671Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l2",
+      "body": null
+    }
+  ]
+}

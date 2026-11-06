@@ -6,12 +6,34 @@
  * HOW: A small wrapper checks hydration state and redirects to registration
  *   when protected routes are accessed without a team.
  */
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useGame } from './context/GameContext';
+import { useGame } from './context/useGame.js';
 import Registration from './pages/Registration';
 import LevelMenu from './pages/LevelMenu';
-import GamePage from './pages/GamePage';
 import AdminPage from './pages/AdminPage';
+
+// Keep Phaser and its scene graph out of the registration/menu download.
+const GamePage = lazy(() => import('./pages/GamePage'));
+
+function GamePageLoading() {
+  return (
+    <main
+      className="maze-experience maze-loading-screen"
+      role="status"
+      aria-live="polite"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '24px',
+      }}
+    >
+      Loading game...
+    </main>
+  );
+}
 
 function RequireTeam({ children }) {
   const { team, isHydrating } = useGame();
@@ -59,7 +81,9 @@ export default function App() {
         path="/game/:levelNum"
         element={(
           <RequireTeam>
-            <GamePage />
+            <Suspense fallback={<GamePageLoading />}>
+              <GamePage />
+            </Suspense>
           </RequireTeam>
         )}
       />
