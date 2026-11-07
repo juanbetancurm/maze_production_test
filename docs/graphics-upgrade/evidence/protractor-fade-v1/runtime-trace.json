@@ -1,0 +1,116 @@
+{
+  "startedAt": "2026-11-07T15:40:54.948Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "protractor-fade-reduced-motion",
+      "result": {
+        "renderer": "WebGL",
+        "opening": {
+          "visible": true,
+          "rootVisible": true,
+          "alpha": 0,
+          "transitionActive": true,
+          "x": 60,
+          "y": 60
+        },
+        "openingMid": {
+          "visible": true,
+          "rootVisible": true,
+          "alpha": 0.7163019434246553,
+          "transitionActive": true,
+          "x": 60,
+          "y": 60
+        },
+        "shown": {
+          "visible": true,
+          "rootVisible": true,
+          "alpha": 1,
+          "transitionActive": false,
+          "x": 60,
+          "y": 60
+        },
+        "closingMid": {
+          "visible": false,
+          "rootVisible": true,
+          "alpha": 0.40167539942934105,
+          "transitionActive": true,
+          "x": 60,
+          "y": 60
+        },
+        "reopened": {
+          "visible": true,
+          "rootVisible": true,
+          "alpha": 1,
+          "transitionActive": false,
+          "x": 60,
+          "y": 60
+        },
+        "hidden": {
+          "visible": false,
+          "rootVisible": false,
+          "alpha": 0,
+          "transitionActive": false,
+          "x": 60,
+          "y": 60
+        },
+        "reducedMotionImmediate": true,
+        "unchangedGameplay": true
+      }
+    }
+  ],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.",
+    "Headless browser frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Real-device coverage remains unmeasured in this run."
+  ],
+  "head": "3b46622a41972285bdab40c05ca942f245809dce",
+  "trackedDiffBefore": "docs/graphics-upgrade/04-protractor-design.md\ndocs/graphics-upgrade/06-development-backlog.md\ndocs/graphics-upgrade/README.md\nfrontend/src/game/minecraftTheme.js\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/game/visuals/ExitView.js\nfrontend/src/game/visuals/GolemView.js\nfrontend/src/game/visuals/ProtractorView.js\nfrontend/src/game/visuals/assetManifest.js\nfrontend/tests/graphics/baseline-scene.js\nfrontend/tests/graphics/run-baseline.mjs",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 55581,
+  "browser": {
+    "Browser": "Chrome/156.0.8078.75",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "V8-Version": "15.6.75.25",
+    "WebKit-Version": "537.36 (@861389936bf33ea77529ee5dcc0605e68f6bb620)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:55581/devtools/browser/cfe0a27b-595d-45f2-9d35-84d55a5092a8"
+  },
+  "browserTargets": [
+    {
+      "id": "4D4AC6FCAED9E5C45E668F5719978385",
+      "type": "background_page",
+      "title": "Google Hangouts",
+      "url": "chrome-extension://nkeimhogjdpnpccoofpliimaahmaaome/background.html"
+    },
+    {
+      "id": "3FF87E8F87933594B378521BD4B04B26",
+      "type": "page",
+      "title": "about:blank",
+      "url": "about:blank"
+    },
+    {
+      "id": "8B21D9B4FD5600AD50EF3947DE0F8361",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    },
+    {
+      "id": "5E25D8BECA20E58FAF95BC5570C1FC5E",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "finishedAt": "2026-11-07T15:41:03.495Z",
+  "apiRequests": []
+}

@@ -28,6 +28,13 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
     applyPremiumLighting(scene, image, GOLEM_TEXTURE_KEY);
     return image;
   });
+  const eyeGlows = images.map((image) => {
+    if (!scene.textures.exists(VISUAL_TEXTURES.golemEyeGlow)) return null;
+    return scene.add.image(image.x, image.y, VISUAL_TEXTURES.golemEyeGlow)
+      .setDisplaySize(image.displayWidth, image.displayHeight)
+      .setAlpha(0.1)
+      .setDepth(image.depth);
+  });
   const facingAngles = images.map(() => 0);
   const baseScales = images.map(({ scaleX, scaleY }) => ({ scaleX, scaleY }));
   const baseShadowStyles = shadowGroups.map(group => group.map(({ scaleX, scaleY, alpha }) => ({
@@ -37,6 +44,17 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
   })));
   const idleStates = images.map(() => ({ lift: 0 }));
   const idleTweens = images.map(() => null);
+
+  const syncEyeGlow = (index) => {
+    const image = images[index];
+    const glow = eyeGlows[index];
+    if (!image.active || !glow?.active) return;
+    glow.setPosition(image.x, image.y)
+      .setRotation(image.rotation)
+      .setDisplaySize(image.displayWidth, image.displayHeight)
+      .setDepth(image.depth)
+      .setAlpha(0.1 + idleStates[index].lift * 0.16);
+  };
 
   let destroyed = false;
 
@@ -60,6 +78,7 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
       shadow.setScale(base.scaleX * (1 + lift * 0.055), base.scaleY * (1 + lift * 0.04));
       shadow.setAlpha(base.alpha * (1 - lift * 0.16));
     });
+    syncEyeGlow(index);
   };
 
   const stopIdleMotion = () => {
@@ -111,8 +130,10 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
         const target = angleFacingPoint(x, y, playerX, playerY);
         facingAngles[index] = easeAngleToward(facingAngles[index], target, deltaMs, { reducedMotion });
         image.rotation = facingAngles[index];
+        syncEyeGlow(index);
       });
     },
+    get eyeGlowCount() { return eyeGlows.filter(Boolean).length; },
     setReducedMotion(reduced) {
       if (destroyed || reducedMotion === Boolean(reduced)) return;
       reducedMotion = Boolean(reduced);
@@ -127,6 +148,7 @@ export function GolemView(scene, positions, { reducedMotion = false } = {}) {
       destroyed = true;
       stopIdleMotion();
       shadowGroups.flat().forEach(shadow => shadow.destroy());
+      eyeGlows.filter(Boolean).forEach(glow => glow.destroy());
       images.forEach(image => image.destroy());
     },
   };

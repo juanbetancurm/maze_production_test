@@ -205,11 +205,17 @@ try {
   await scenario('player-topdown-motion', async () => {
     await fixture(1);
     const before = await cdp.evaluate('anglemazeBaseline.snapshot()');
-    const accepted = await cdp.evaluate("anglemazeBaseline.scene().goForward(150, () => { window.__playerSettleStarted = Boolean(anglemazeBaseline.scene().playerSprite._settleTween) })");
+    const accepted = await cdp.evaluate("anglemazeBaseline.scene().goForward(150, () => { const player = anglemazeBaseline.scene().playerSprite; window.__playerSettleStarted = Boolean(player._settleTween); window.__playerSettleShadowStarted = Boolean(player._settleShadowTween); setTimeout(() => { window.__playerSettleShadowSample = { scaleX: player._contactShadow.scaleX, scaleY: player._contactShadow.scaleY, alpha: player._contactShadow.alpha } }, 35) })");
     await sleep(220);
     const moving = await cdp.evaluate('anglemazeBaseline.snapshot()');
     await shot('scene-player-topdown-motion');
     const idle = await waitForIdleScene();
+    const settleShadowSample = await cdp.evaluate('window.__playerSettleShadowSample ?? null');
+    if (!settleShadowSample || settleShadowSample.scaleX <= before.playerContactShadow.scaleX * 1.02 ||
+        settleShadowSample.scaleY <= before.playerContactShadow.scaleY * 1.01) {
+      throw new Error(`Expected the contact shadow to spread during landing: ${JSON.stringify(settleShadowSample)}`);
+    }
+    await shot('scene-player-contact-shadow-settle');
     if (!accepted || !before.playerIdle || moving.playerIdle || before.playerTexture !== 'player' ||
       !before.playerTopDown || !moving.playerTopDown || !moving.playerWalkingCue ||
       moving.playerTexture !== 'premium.player.walk' ||
@@ -231,10 +237,42 @@ try {
     }
     const settleStarted = await cdp.evaluate('Boolean(window.__playerSettleStarted)');
     if (!settleStarted) throw new Error('Expected the movement-complete callback to observe the settle animation starting');
+    const settleShadowStarted = await cdp.evaluate('Boolean(window.__playerSettleShadowStarted)');
+    if (!settleShadowStarted) throw new Error('Expected the grounded contact-shadow landing response to start with the player settle');
     await sleep(220);
     const settled = await cdp.evaluate('anglemazeBaseline.snapshot()');
-    if (settled.playerSettle || !settled.playerIdle) throw new Error('The movement settle did not return to the idle state');
-    return { accepted, before, moving, idle, settled, settleStarted };
+    if (settled.playerSettle || settled.playerSettleShadow || !settled.playerIdle ||
+        Math.abs(settled.playerContactShadow.scaleX - before.playerContactShadow.scaleX) > 1e-5 ||
+        Math.abs(settled.playerContactShadow.scaleY - before.playerContactShadow.scaleY) > 1e-5 ||
+        Math.abs(settled.playerContactShadow.alpha - before.playerContactShadow.alpha) > 1e-5) {
+      throw new Error(`The movement settle did not restore the grounded contact shadow: ${JSON.stringify(settled.playerContactShadow)}`);
+    }
+    return { accepted, before, moving, idle, settleShadowSample, settled, settleStarted, settleShadowStarted };
+  });
+  await scenario('player-settle-reduced-motion-interrupt', async () => {
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await fixture(1);
+    const baseline = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    const accepted = await cdp.evaluate('anglemazeBaseline.scene().goForward(150, () => {})');
+    const settling = await waitForIdleScene();
+    if (!accepted || !settling.playerSettleShadow) {
+      throw new Error(`Expected a landing-shadow tween before changing motion preference: ${JSON.stringify(settling)}`);
+    }
+
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await sleep(35);
+    const reduced = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    const shadowRestored = reduced.playerContactShadow.scaleX === baseline.playerContactShadow.scaleX &&
+      reduced.playerContactShadow.scaleY === baseline.playerContactShadow.scaleY &&
+      reduced.playerContactShadow.alpha === baseline.playerContactShadow.alpha;
+    if (!reduced.reducedMotion || reduced.playerSettle || reduced.playerSettleShadow || !shadowRestored ||
+        reduced.moving || reduced.x !== settling.x || reduced.y !== settling.y) {
+      throw new Error(`Reduced motion did not safely cancel the visual settle: ${JSON.stringify({ baseline, settling, reduced })}`);
+    }
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await fixture(1);
+    return { accepted, settleShadowWasActive: settling.playerSettleShadow,
+      reducedMotionApplied: reduced.reducedMotion, shadowRestored, physicsPositionPreserved: true };
   });
   await scenario('player-topdown-motion-canvas', async () => {
     const before = await fixture(1, false, 'canvas');
@@ -306,6 +344,7 @@ try {
     const diagonalWallTexture = state.visuals.wallKitTextureSources
       .find(({ key }) => key.endsWith('.diagonal.horizontal'));
     if (state.visuals.golemCount !== 4 || state.visuals.golemShadowCount !== 4 ||
+        !state.visuals.golemEyeGlowTextureLoaded || state.visuals.golemEyeGlowCount !== 4 ||
         state.visuals.golemHitboxCount !== 4 ||
         state.visuals.golemCollisionShapeCount !== 4 ||
         state.visuals.wallSegmentCount <= 0 || state.visuals.wallModuleCount < state.visuals.wallSegmentCount ||
@@ -328,12 +367,16 @@ try {
       const s = anglemazeBaseline.scene();
       const golems = s.children.list
         .filter(object => object.texture?.key === 'premium.golem.static')
-        .map(({ x, y, scaleX, scaleY }) => ({ x, y, scaleX, scaleY }));
+        .map(({ x, y, scaleX, scaleY, rotation }) => ({ x, y, scaleX, scaleY, rotation }));
+      const eyeGlows = s.children.list
+        .filter(object => object.texture?.key === 'premium.golem.eye-glow')
+        .map(({ x, y, rotation, alpha }) => ({ x, y, rotation, alpha }));
       const contactShadows = s.children.list
         .filter(object => object.type === 'Ellipse' && object.depth === 3.7)
         .map(({ x, y, scaleX, scaleY, alpha }) => ({ x, y, scaleX, scaleY, alpha }));
       return {
         golems,
+        eyeGlows,
         contactShadows,
         anchors: s.golemView.renderOrder,
         collisionAnchors: s.golemCollisionShapes.map(({ x, y }) => ({ x, y })),
@@ -347,15 +390,48 @@ try {
       Math.abs(golem.y - lifted.golems[index].y)));
     const maxShadowAlphaChange = Math.max(...grounded.contactShadows.map((shadow, index) =>
       Math.abs(shadow.alpha - lifted.contactShadows[index].alpha)));
+    const maxEyeGlowAlphaChange = Math.max(...grounded.eyeGlows.map((glow, index) =>
+      Math.abs(glow.alpha - lifted.eyeGlows[index].alpha)));
+    const eyeGlowsFollowActors = grounded.eyeGlows.length === grounded.golems.length &&
+      grounded.eyeGlows.every((glow, index) => glow.x === grounded.golems[index].x &&
+        glow.y === grounded.golems[index].y && glow.rotation === grounded.golems[index].rotation) &&
+      lifted.eyeGlows.every((glow, index) => glow.x === lifted.golems[index].x &&
+        glow.y === lifted.golems[index].y && glow.rotation === lifted.golems[index].rotation);
     if (grounded.golems.length !== 4 || maxBodyLift < 0.1 || maxShadowAlphaChange < 0.001 ||
+        grounded.eyeGlows.length !== 4 || maxEyeGlowAlphaChange < 0.01 || !eyeGlowsFollowActors ||
         JSON.stringify(grounded.anchors) !== JSON.stringify(lifted.anchors) ||
         JSON.stringify(grounded.collisionAnchors) !== JSON.stringify(lifted.collisionAnchors) ||
         grounded.player.x !== lifted.player.x || grounded.player.y !== lifted.player.y) {
-      throw new Error(`Expected visible weighted idle with stable gameplay anchors: ${JSON.stringify({
-        maxBodyLift, maxShadowAlphaChange, grounded, lifted,
+      throw new Error(`Expected visible weighted idle, eye glow, and stable gameplay anchors: ${JSON.stringify({
+        maxBodyLift, maxShadowAlphaChange, maxEyeGlowAlphaChange, eyeGlowsFollowActors, grounded, lifted,
       })}`);
     }
-    return { maxBodyLift, maxShadowAlphaChange, anchorsRemainFixed: true, playerRemainsFixed: true };
+    await shot('scene-level2-golem-eye-glow');
+    return { maxBodyLift, maxShadowAlphaChange, maxEyeGlowAlphaChange,
+      eyeGlowsFollowActors, anchorsRemainFixed: true, playerRemainsFixed: true };
+  });
+  await scenario('level2-golem-eye-glow-canvas', async () => {
+    const state = await fixture(2, false, 'canvas');
+    const readGlows = () => cdp.evaluate(`(() => anglemazeBaseline.scene().children.list
+      .filter(object => object.texture?.key === 'premium.golem.eye-glow')
+      .map(({ x, y, rotation, alpha, visible }) => ({ x, y, rotation, alpha, visible })))()`);
+    const moving = await readGlows();
+    await cdp.evaluate('anglemazeBaseline.scene().golemView.setReducedMotion(true)');
+    await sleep(50); // allow the reduced-motion facing snap to reach the stationary player
+    const reducedStart = await readGlows();
+    await sleep(300);
+    const reducedEnd = await readGlows();
+    await shot('scene-level2-golem-eye-glow-canvas');
+    if (state.renderer !== 'Canvas' || !state.visuals.golemEyeGlowTextureLoaded || moving.length !== 4 ||
+        moving.some(glow => !glow.visible) ||
+        JSON.stringify(reducedStart) !== JSON.stringify(reducedEnd)) {
+      throw new Error(`Expected four visible Canvas eye overlays and a static reduced-motion pose: ${JSON.stringify({
+        renderer: state.renderer, moving, reducedStart, reducedEnd,
+      })}`);
+    }
+    await cdp.evaluate('anglemazeBaseline.scene().golemView.setReducedMotion(false)');
+    return { renderer: state.renderer, glowCount: moving.length,
+      reducedMotionPoseRemainedStatic: true };
   });
   await scenario('level2-actor-depth-sorting', async () => {
     const upper = await fixture(2);
@@ -437,10 +513,104 @@ try {
     return results;
   });
   await scenario('level2-checkpoint-overlap', async () => {
+    await fixture(2);
     await cdp.evaluate('anglemazeBaseline.restart(2)');
     await cdp.evaluate('anglemazeBaseline.place(645,525,90)'); await sleep(250);
+    await cdp.evaluate('anglemazeBaseline.place(700,560,90)'); await sleep(1600);
     await shot('scene-level2-checkpoint');
-    return { state: await cdp.evaluate('anglemazeBaseline.snapshot()'), events: await cdp.evaluate('anglemazeBaseline.events.slice(-8)') };
+    const state = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    if (!state.checkpoint || !state.checkpointGlow?.active || !state.checkpointGlow.pulseActive ||
+        state.checkpointGlow.position.x !== state.checkpoint.x ||
+        state.checkpointGlow.position.y !== state.checkpoint.y) {
+      throw new Error(`The active checkpoint should receive a matching display-only halo: ${JSON.stringify({
+        checkpoint: state.checkpoint, glow: state.checkpointGlow,
+      })}`);
+    }
+    return { state, events: await cdp.evaluate('anglemazeBaseline.events.slice(-8)') };
+  });
+  await scenario('level2-checkpoint-glow-canvas-reduced-motion', async () => {
+    const initial = await fixture(2, false, 'canvas');
+    await cdp.evaluate('anglemazeBaseline.place(645,525,90)');
+    await sleep(250);
+    await cdp.evaluate('anglemazeBaseline.place(700,560,90)');
+    await sleep(1600);
+    const active = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await shot('scene-level2-checkpoint-glow-canvas');
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await sleep(50);
+    const reducedStart = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await sleep(400);
+    const reducedEnd = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await sleep(50);
+    const resumed = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    if (initial.renderer !== 'Canvas' || !active.checkpointGlow?.pulseActive ||
+        !reducedStart.reducedMotion || reducedStart.checkpointGlow.pulseActive ||
+        reducedStart.checkpointGlow.alpha !== reducedEnd.checkpointGlow.alpha ||
+        reducedStart.checkpointGlow.position.x !== reducedEnd.checkpointGlow.position.x ||
+        reducedStart.checkpointGlow.position.y !== reducedEnd.checkpointGlow.position.y ||
+        resumed.reducedMotion || !resumed.checkpointGlow.pulseActive) {
+      throw new Error(`The checkpoint halo should work on Canvas and pause under reduced motion: ${JSON.stringify({
+        initial: initial.renderer, active: active.checkpointGlow, reducedStart: reducedStart.checkpointGlow,
+        reducedEnd: reducedEnd.checkpointGlow, reduced: reducedStart.reducedMotion,
+        resumed: resumed.checkpointGlow,
+      })}`);
+    }
+    return { renderer: initial.renderer, haloPosition: active.checkpointGlow.position,
+      reducedMotionStatic: true, pulseResumed: resumed.checkpointGlow.pulseActive };
+  });
+  await scenario('protractor-fade-reduced-motion', async () => {
+    const initial = await fixture(1);
+    const setVisible = (visible) => cdp.evaluate(`anglemazeBaseline.scene().protractorView.setVisible(${visible})`);
+    await setVisible(true);
+    const opening = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await sleep(55);
+    const openingMid = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await sleep(115);
+    const shown = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await shot('scene-protractor-fade-visible');
+
+    await setVisible(false);
+    await sleep(45);
+    const closingMid = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await setVisible(true);
+    await sleep(150);
+    const reopened = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await setVisible(false);
+    await sleep(150);
+    const hidden = await cdp.evaluate('anglemazeBaseline.snapshot()');
+
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await sleep(60);
+    const reduced = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await setVisible(true);
+    const reducedShown = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await setVisible(false);
+    const reducedHidden = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await sleep(60);
+
+    const unchangedGameplay = initial.x === hidden.x && initial.y === hidden.y &&
+      initial.angle === hidden.angle && initial.lives === hidden.lives;
+    if (!opening.protractor?.rootVisible || opening.protractor.alpha !== 0 ||
+        !openingMid.protractor?.transitionActive || !(openingMid.protractor.alpha > 0 && openingMid.protractor.alpha < 1) ||
+        !shown.protractor.rootVisible || shown.protractor.alpha !== 1 || shown.protractor.transitionActive ||
+        !closingMid.protractor.rootVisible || !(closingMid.protractor.alpha > 0 && closingMid.protractor.alpha < 1) ||
+        !reopened.protractor.rootVisible || reopened.protractor.alpha !== 1 ||
+        hidden.protractor.rootVisible || hidden.protractor.alpha !== 0 ||
+        !reduced.reducedMotion || reducedShown.protractor.alpha !== 1 || reducedShown.protractor.transitionActive ||
+        reducedHidden.protractor.rootVisible || reducedHidden.protractor.alpha !== 0 ||
+        !unchangedGameplay || shown.protractor.x !== shown.x || shown.protractor.y !== shown.y) {
+      throw new Error(`Protractor visibility should fade, reverse cleanly, and become immediate for reduced motion: ${JSON.stringify({
+        opening: opening.protractor, openingMid: openingMid.protractor, shown: shown.protractor,
+        closingMid: closingMid.protractor, reopened: reopened.protractor, hidden: hidden.protractor,
+        reduced: reduced.reducedMotion, reducedShown: reducedShown.protractor, reducedHidden: reducedHidden.protractor,
+        unchangedGameplay,
+      })}`);
+    }
+    return { renderer: initial.renderer, opening: opening.protractor, openingMid: openingMid.protractor,
+      shown: shown.protractor, closingMid: closingMid.protractor, reopened: reopened.protractor,
+      hidden: hidden.protractor, reducedMotionImmediate: true, unchangedGameplay };
   });
   await scenario('level1-victory-overlap', async () => {
     await cdp.evaluate('anglemazeBaseline.restart(1)');
@@ -465,6 +635,45 @@ try {
       throw new Error(`Expected quiet amber feedback only near the exit: ${JSON.stringify(levels)}`);
     }
     return levels;
+  });
+  await scenario('exit-activation-burst', async () => {
+    await fixture(1);
+    const normalStart = await cdp.evaluate('anglemazeBaseline.scene().children.list.length');
+    await cdp.evaluate('anglemazeBaseline.scene().exitVisual.activate()');
+    const normalDuring = await cdp.evaluate('anglemazeBaseline.scene().children.list.length');
+    await sleep(180);
+    const effectState = await cdp.evaluate(`anglemazeBaseline.scene().children.list
+      .filter(object => ['Circle', 'Star'].includes(object.type) && object.depth >= 2.35)
+      .map(({ type, x, y, scaleX, scaleY, alpha, depth, fillColor, fillAlpha, visible }) =>
+        ({ type, x, y, scaleX, scaleY, alpha, depth, fillColor, fillAlpha, visible }))`);
+    await shot('scene-exit-activation-burst');
+    await sleep(650);
+    const normalAfter = await cdp.evaluate('anglemazeBaseline.scene().children.list.length');
+    const normalActivated = await cdp.evaluate('anglemazeBaseline.scene().exitVisual.isActivated');
+    const visibleSparkles = effectState.filter(({ type }) => type === 'Star');
+    if (normalDuring - normalStart !== 9 || visibleSparkles.length !== 8 ||
+        visibleSparkles.some(({ alpha, scaleX, visible }) => !visible || alpha < 0.45 || scaleX < 0.7) ||
+        normalAfter !== normalStart ||
+        !normalActivated) {
+      throw new Error(`Expected a bounded nine-object exit burst to clean itself up: ${JSON.stringify({
+        normalStart, normalDuring, normalAfter, visibleSparkles,
+      })}`);
+    }
+
+    await fixture(1);
+    await cdp.evaluate('anglemazeBaseline.scene().exitVisual.setReducedMotion(true)');
+    const reducedStart = await cdp.evaluate('anglemazeBaseline.scene().children.list.length');
+    await cdp.evaluate('anglemazeBaseline.scene().exitVisual.activate()');
+    const reducedAfter = await cdp.evaluate('anglemazeBaseline.scene().children.list.length');
+    const reducedActivated = await cdp.evaluate('anglemazeBaseline.scene().exitVisual.isActivated');
+    if (reducedAfter !== reducedStart || !reducedActivated) {
+      throw new Error(`Reduced motion should activate the exit without moving particles: ${JSON.stringify({
+        reducedStart, reducedAfter,
+      })}`);
+    }
+    return { normalObjectsAdded: normalDuring - normalStart, effectsAtCapture: effectState,
+      normalObjectsAfterCleanup: normalAfter,
+      reducedMotionObjectsAdded: reducedAfter - reducedStart };
   });
   await scenario('twenty-restarts', async () => {
     const counts = [];

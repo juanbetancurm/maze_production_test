@@ -26,6 +26,8 @@ export function ExitView(scene, x, y, { reducedMotion = false } = {}) {
   let activated = false;
   let pulseTween = null;
   let proximity = 0;
+  const activationObjects = new Set();
+  const activationTweens = new Set();
 
   const stopPulse = () => {
     pulseTween?.stop();
@@ -52,6 +54,70 @@ export function ExitView(scene, x, y, { reducedMotion = false } = {}) {
     proximityGlow.setScale(1.12).setAlpha(Math.max(proximity * 0.16, reducedMotion ? 0.12 : 0.2));
   };
 
+  const stopActivationEffects = () => {
+    activationTweens.forEach(tween => tween.stop());
+    activationTweens.clear();
+    activationObjects.forEach(effect => {
+      if (effect.active) effect.destroy();
+    });
+    activationObjects.clear();
+  };
+
+  const animateActivationEffect = (effect, tweenConfig) => {
+    activationObjects.add(effect);
+    let tween;
+    tween = scene.tweens.add({
+      targets: effect,
+      ...tweenConfig,
+      onComplete: () => {
+        activationTweens.delete(tween);
+        activationObjects.delete(effect);
+        if (effect.active) effect.destroy();
+      },
+    });
+    activationTweens.add(tween);
+  };
+
+  const playActivationBurst = () => {
+    if (destroyed || reducedMotion) return;
+
+    const ring = scene.add.circle(x, y, 28, 0xffd66b, 0)
+      .setStrokeStyle(3, 0xffca43, 0.98)
+      .setScale(0.7)
+      .setDepth(2.35);
+    animateActivationEffect(ring, {
+      scale: 1.65,
+      alpha: 0,
+      duration: 560,
+      ease: 'Cubic.easeOut',
+    });
+
+    const sparkleColors = [0xfff0ae, 0xffffff, 0xffca52, 0xffe58b];
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8 - Math.PI / 2;
+      const startRadius = 35;
+      const endRadius = 49 + ((index % 2) * 7);
+      const sparkle = scene.add.star(
+        x + Math.cos(angle) * startRadius,
+        y + Math.sin(angle) * startRadius,
+        4,
+        3,
+        9,
+        sparkleColors[index % sparkleColors.length],
+        0.96,
+      ).setScale(0.95).setDepth(2.7);
+      animateActivationEffect(sparkle, {
+        x: x + Math.cos(angle) * endRadius,
+        y: y + Math.sin(angle) * endRadius,
+        scale: 0.72,
+        alpha: 0,
+        duration: 520,
+        delay: (index % 4) * 20,
+        ease: 'Sine.easeIn',
+      });
+    }
+  };
+
   if (reducedMotion) {
     stopPulse();
   } else {
@@ -66,6 +132,7 @@ export function ExitView(scene, x, y, { reducedMotion = false } = {}) {
       activated = true;
       stopPulse();
       showActivation();
+      playActivationBurst();
     },
     get isActivated() { return activated; },
     updateProximity(playerX, playerY) {
@@ -79,6 +146,7 @@ export function ExitView(scene, x, y, { reducedMotion = false } = {}) {
       if (destroyed || reducedMotion === Boolean(reduced)) return;
       reducedMotion = Boolean(reduced);
       if (activated) {
+        if (reducedMotion) stopActivationEffects();
         showActivation();
       } else if (reducedMotion) {
         stopPulse();
@@ -90,6 +158,7 @@ export function ExitView(scene, x, y, { reducedMotion = false } = {}) {
       if (destroyed) return;
       destroyed = true;
       stopPulse();
+      stopActivationEffects();
       halo.destroy();
       proximityGlow.destroy();
       image.destroy();

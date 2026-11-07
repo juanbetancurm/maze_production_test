@@ -31,10 +31,12 @@ import {
   placeThemedEnemies,
   updatePlayerRotation, getTrailStyle,
   startWalkAnimation, stopWalkAnimation,
+  syncPlayerWalkCycle,
   startIdleAnimation, stopIdleAnimation, startImpactAnimation, stopImpactAnimation,
   startTurnFeedback, stopTurnFeedback, startSettleAnimation, stopSettleAnimation,
 } from '../minecraftTheme.js';
 import EnvironmentView from '../visuals/EnvironmentView.js';
+import CheckpointGlowView from '../visuals/CheckpointGlowView.js';
 import CollisionDebugView from '../visuals/CollisionDebugView.js';
 import ProtractorView from '../visuals/ProtractorView.js';
 import { actorDepthForY } from '../visuals/ActorDepth.js';
@@ -44,6 +46,7 @@ import {
   applyVisualAssetFiltering,
   enablePremiumLighting,
   prepareCheckpointTextures,
+  prepareGolemEyeGlowTexture,
   VISUAL_TEXTURES,
 } from '../visuals/assetManifest.js';
 
@@ -363,8 +366,14 @@ export default class MazeScene extends Phaser.Scene {
     //   Every themed rendering function checks this flag.
     this._themed = isThemeLoaded(this);
     prepareCheckpointTextures(this);
+    prepareGolemEyeGlowTexture(this);
     applyVisualAssetFiltering(this);
     this._premiumLightingEnabled = enablePremiumLighting(this);
+    const hasReferenceCheckpointArt = this.textures.exists(VISUAL_TEXTURES.checkpointActive) &&
+      this.textures.exists(VISUAL_TEXTURES.checkpointClaimed);
+    this.checkpointGlowView = hasReferenceCheckpointArt
+      ? CheckpointGlowView(this, { reducedMotion: this._reducedMotion })
+      : null;
 
     // ── Level selection — MUST come FIRST ──────────────────────────────
     //
@@ -636,7 +645,9 @@ export default class MazeScene extends Phaser.Scene {
     const onMotionPreferenceChange = (event) => {
       this._reducedMotion = Boolean(event.matches);
       this.golemView?.setReducedMotion(this._reducedMotion);
+      this.checkpointGlowView?.setReducedMotion(this._reducedMotion);
       this.exitVisual?.setReducedMotion?.(this._reducedMotion);
+      this.protractorView?.setReducedMotion(this._reducedMotion);
       if (this.playerSprite && this._themed) {
         if (this.isMoving && !this._reducedMotion) {
           startWalkAnimation(this.playerSprite, this.facingAngle, this._themed, this);
@@ -678,6 +689,8 @@ export default class MazeScene extends Phaser.Scene {
       this.environmentView = null;
       this.golemView?.destroy();
       this.golemView = null;
+      this.checkpointGlowView?.destroy();
+      this.checkpointGlowView = null;
       this.protractorView?.destroy();
       this.protractorView = null;
       this.exitVisual?.destroy?.();
@@ -1027,6 +1040,7 @@ export default class MazeScene extends Phaser.Scene {
           .setDepth(3);
         sprite.setAlpha(isActive || isPassed ? 1 : 0.82);
         sprite.setData('checkpointState', isActive ? 'active' : isPassed ? 'claimed' : 'unreached');
+        if (isActive) this.checkpointGlowView?.setActive(cp.x, cp.y);
       } else if (themed) {
         sprite = this.add.sprite(cp.x, cp.y, 'checkpoint')
           .setDisplaySize(36, 36)
@@ -1132,6 +1146,7 @@ export default class MazeScene extends Phaser.Scene {
   _syncPlayerVisuals() {
     if (!this.player) return;
     if (this.playerSprite) {
+      syncPlayerWalkCycle(this.playerSprite, this.player.x, this.player.y);
       this.playerSprite.setPosition(this.player.x, this.player.y);
       this.playerSprite.setDepth(actorDepthForY(this.player.y));
       this.playerSprite._groundShadow?.setPosition(this.player.x + 2, this.player.y + 18);
@@ -1777,6 +1792,10 @@ export default class MazeScene extends Phaser.Scene {
     // ── Update game state ───────────────────────────────────────────────
     this.game._activeCheckpoint = checkpoint;
     this.game._activatedCheckpoints.add(checkpoint.id);
+    if (this.textures.exists(VISUAL_TEXTURES.checkpointActive) &&
+        this.textures.exists(VISUAL_TEXTURES.checkpointClaimed)) {
+      this.checkpointGlowView?.setActive(checkpoint.x, checkpoint.y);
+    }
 
     // ── Update checkpoint badge art or fallback tints ────────────────────
     const levelCheckpoints = checkpointsByLevel[this.game._currentLevel] || [];

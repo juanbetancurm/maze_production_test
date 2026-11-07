@@ -55,6 +55,11 @@ const ASSETS = {
 };
 
 const PLAYER_WALK_ANIMATION_KEY = 'anglemaze.player.walk';
+const PLAYER_WALK_FRAME_COUNT = 4;
+// The current 4-frame cycle at 8 fps covers 150 world units at MOVE_SPEED=300.
+// Advancing from actual displacement keeps the gait attached to real travel,
+// including partial moves and collision-stopped movement.
+const PLAYER_WALK_CYCLE_DISTANCE = 150;
 
 
 /**
@@ -326,14 +331,26 @@ export function createThemedPlayer(scene, x, y) {
     sprite._walkCycleTextureKey = VISUAL_TEXTURES.playerWalk;
     sprite._walkCycleAnimationKey = null;
     sprite._walkCycleActive = false;
+    sprite._walkCycleDistance = 0;
+    sprite._walkCycleLastX = x;
+    sprite._walkCycleLastY = y;
+    sprite._walkCycleDisplayedFrame = -1;
     sprite._restDisplayWidth = sprite.displayWidth;
     sprite._restDisplayHeight = sprite.displayHeight;
+    sprite._walkShadowRest = {
+      alpha: sprite._contactShadow.alpha,
+      scaleX: sprite._contactShadow.scaleX,
+      scaleY: sprite._contactShadow.scaleY,
+    };
 
     if (scene.textures.exists(VISUAL_TEXTURES.playerWalk)) {
       if (!scene.anims.exists(PLAYER_WALK_ANIMATION_KEY)) {
         scene.anims.create({
           key: PLAYER_WALK_ANIMATION_KEY,
-          frames: scene.anims.generateFrameNumbers(VISUAL_TEXTURES.playerWalk, { start: 0, end: 3 }),
+          frames: scene.anims.generateFrameNumbers(VISUAL_TEXTURES.playerWalk, {
+            start: 0,
+            end: PLAYER_WALK_FRAME_COUNT - 1,
+          }),
           frameRate: 8,
           repeat: -1,
         });
@@ -658,6 +675,81 @@ export function startSettleAnimation(player, themed, scene) {
       player._settleTween = null;
     },
   });
+
+  // As the character lands, let its contact shadow spread and soften for the
+  // same short beat. This is display-only and stays anchored to the physics
+  // body; it adds weight without moving or resizing the collision shape.
+  const shadow = player._contactShadow;
+  const shadowRest = player._walkShadowRest;
+  if (shadow?.active && shadowRest) {
+    player._settleShadowTween = scene.tweens.add({
+      targets: shadow,
+      scaleX: shadowRest.scaleX * 1.1,
+      scaleY: shadowRest.scaleY * 1.08,
+      alpha: shadowRest.alpha * 0.9,
+      duration: 95,
+      ease: 'Sine.easeOut',
+      yoyo: true,
+      onComplete: () => {
+        shadow.setAlpha(shadowRest.alpha);
+        shadow.setScale(shadowRest.scaleX, shadowRest.scaleY);
+        player._settleShadowTween = null;
+      },
+    });
+  }
+}
+
+/**
+ * Advance the walk pose from the authoritative physics body's actual travel.
+ * The sprite stays at the body anchor; only the atlas frame and contact shadow
+ * change. This keeps short moves and collision interruptions visually honest.
+ */
+export function syncPlayerWalkCycle(player, worldX, worldY) {
+  if (!player?._walkCycleActive || !Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+  const previousX = player._walkCycleLastX ?? worldX;
+  const previousY = player._walkCycleLastY ?? worldY;
+  const traveled = Math.hypot(worldX - previousX, worldY - previousY);
+  player._walkCycleDistance = (player._walkCycleDistance ?? 0) + traveled;
+  player._walkCycleLastX = worldX;
+  player._walkCycleLastY = worldY;
+
+  const cycleDistance = player._walkCycleDistance % PLAYER_WALK_CYCLE_DISTANCE;
+  const phase = cycleDistance / PLAYER_WALK_CYCLE_DISTANCE;
+  const frameIndex = Math.floor(phase * PLAYER_WALK_FRAME_COUNT);
+  if (frameIndex !== player._walkCycleDisplayedFrame && player.anims?.currentAnim) {
+    // Keep Phaser's animation state active for existing lifecycle/diagnostics,
+    // while selecting the frame deterministically from distance rather than
+    // letting elapsed wall-clock time race ahead of a partial movement.
+    player.anims.setProgress((frameIndex + 0.5) / PLAYER_WALK_FRAME_COUNT);
+    player._walkCycleDisplayedFrame = frameIndex;
+  }
+
+  // A restrained lift/landing squash adds weight to the overhead pose without
+  // shifting its world anchor or changing its collision footprint.
+  const lift = 0.5 - (0.5 * Math.cos(phase * Math.PI * 4));
+  const restWidth = player._restDisplayWidth ?? player.displayWidth;
+  const restHeight = player._restDisplayHeight ?? player.displayHeight;
+  player.setDisplaySize(restWidth * (1 - (0.01 * lift)), restHeight * (1 + (0.02 * lift)));
+
+  const shadow = player._contactShadow;
+  const rest = player._walkShadowRest;
+  if (shadow && rest) {
+    const weight = 1 - lift;
+    shadow.setAlpha(rest.alpha * (0.88 + (0.12 * weight)));
+    shadow.setScale(
+      rest.scaleX * (0.92 + (0.08 * weight)),
+      rest.scaleY * (0.9 + (0.1 * weight)),
+    );
+  }
+}
+
+function restorePlayerWalkShadow(player) {
+  const shadow = player?._contactShadow;
+  const rest = player?._walkShadowRest;
+  if (!shadow || !rest) return;
+  shadow.setAlpha(rest.alpha);
+  shadow.setScale(rest.scaleX, rest.scaleY);
 }
 
 /** Stop the endpoint rebound before another visual state takes ownership. */
@@ -665,6 +757,14 @@ export function stopSettleAnimation(player) {
   if (!player) return;
   player._settleTween?.stop();
   player._settleTween = null;
+  player._settleShadowTween?.stop();
+  player._settleShadowTween = null;
+  const shadow = player._contactShadow;
+  const shadowRest = player._walkShadowRest;
+  if (shadow?.active && shadowRest) {
+    shadow.setAlpha(shadowRest.alpha);
+    shadow.setScale(shadowRest.scaleX, shadowRest.scaleY);
+  }
   if (typeof player._restScaleX === 'number') player.scaleX = player._restScaleX;
 }
 
@@ -726,6 +826,13 @@ export function startWalkAnimation(player, facingAngle, themed, scene) {
       player.setDisplaySize(player._restDisplayWidth, player._restDisplayHeight);
       player._walkCycleActive = true;
       player.play(player._walkCycleAnimationKey, true);
+      // Freeze Phaser's time-driven frame advance. syncPlayerWalkCycle() will
+      // choose the frame from actual body displacement on each scene sync.
+      player.anims.timeScale = 0;
+      player._walkCycleLastX = player.x;
+      player._walkCycleLastY = player.y;
+      player._walkCycleDisplayedFrame = -1;
+      syncPlayerWalkCycle(player, player.x, player.y);
       return;
     }
 
@@ -847,6 +954,8 @@ export function stopWalkAnimation(player, facingAngle, themed) {
     player.setDisplaySize(player._restDisplayWidth, player._restDisplayHeight);
     applyPremiumLighting(player.scene, player, player._walkCycleBaseTextureKey);
     player._walkCycleActive = false;
+    player._walkCycleDisplayedFrame = -1;
+    restorePlayerWalkShadow(player);
   } else if (player?._walkAnimationKey && player.anims?.isPlaying) {
     player.anims.stop();
     player.setFrame(0);

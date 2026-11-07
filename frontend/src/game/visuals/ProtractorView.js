@@ -12,9 +12,10 @@ export default class ProtractorView {
     this.angle = 0;
     this.turn = null;
     this.turnClearEvent = null;
+    this.visibilityTween = null;
     this.reducedMotion = Boolean(options.reducedMotion);
     this.mobile = Boolean(options.mobile);
-    this.root = scene.add.container(0, 0).setDepth(options.depth ?? 1000).setVisible(false);
+    this.root = scene.add.container(0, 0).setDepth(options.depth ?? 1000).setAlpha(0).setVisible(false);
     this.staticGfx = scene.add.graphics();
     this.liveGfx = scene.add.graphics();
     this.root.add([this.staticGfx, this.liveGfx]);
@@ -32,10 +33,44 @@ export default class ProtractorView {
 
   setVisible(value) {
     if (this.destroyed) return;
-    this.visible = Boolean(value);
+    const nextVisible = Boolean(value);
+    this.visible = nextVisible;
     if (!this.visible) this.clearTurn();
-    this.root.setVisible(this.visible);
-    this.root.setAlpha(this.visible ? 1 : 0);
+    this.visibilityTween?.stop();
+    this.visibilityTween = null;
+
+    const targetAlpha = this.visible ? 1 : 0;
+    if (this.reducedMotion) {
+      this.root.setVisible(this.visible).setAlpha(targetAlpha);
+      return;
+    }
+
+    if (this.visible) this.root.setVisible(true);
+    if (Math.abs(this.root.alpha - targetAlpha) < 0.001) {
+      this.root.setAlpha(targetAlpha).setVisible(this.visible);
+      return;
+    }
+
+    this.visibilityTween = this.scene.tweens.add({
+      targets: this.root,
+      alpha: targetAlpha,
+      duration: 120,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.visibilityTween = null;
+        this.root.setVisible(this.visible);
+      },
+    });
+  }
+
+  setReducedMotion(reduced) {
+    if (this.destroyed) return;
+    this.reducedMotion = Boolean(reduced);
+    if (!this.reducedMotion) return;
+
+    this.visibilityTween?.stop();
+    this.visibilityTween = null;
+    this.root.setVisible(this.visible).setAlpha(this.visible ? 1 : 0);
   }
 
   setScreenScale(gameScale) {
@@ -98,6 +133,8 @@ export default class ProtractorView {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.visibilityTween?.stop();
+    this.visibilityTween = null;
     this.turnClearEvent?.remove(false);
     this.turnClearEvent = null;
     this.labels.forEach((label) => label.destroy());
