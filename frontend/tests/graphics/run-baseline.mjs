@@ -12,6 +12,7 @@ const root = path.resolve(frontend, '..');
 const output = process.env.ANGLEMAZE_EVIDENCE_DIR
   ? path.resolve(process.env.ANGLEMAZE_EVIDENCE_DIR)
   : path.join(root, 'docs/graphics-upgrade/evidence/baseline');
+const captureScreenshots = process.env.ANGLEMAZE_CAPTURE_SCREENSHOTS !== '0';
 const selectedScenarios = process.env.ANGLEMAZE_SCENARIOS
   ? new Set(process.env.ANGLEMAZE_SCENARIOS.split(',').map((name) => name.trim()).filter(Boolean))
   : null;
@@ -25,6 +26,7 @@ const apiRequests = [];
 const premiumAssetRequests = [];
 const fetchInterceptionErrors = [];
 let staleFetchInterceptions = 0;
+let apiResponseDelayMs = 0;
 const teams = new Map();
 let nextTeam = 1;
 let chrome;
@@ -54,6 +56,10 @@ const api = http.createServer(async (request, response) => {
   const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
   apiRequests.push({ at: new Date().toISOString(), method: request.method, pathname, body });
   const send = (value, status = 200) => response.writeHead(status).end(JSON.stringify(value));
+  if (apiResponseDelayMs > 0 && request.method === 'GET' &&
+      (pathname.startsWith('/api/teams/') || pathname.startsWith('/api/progress/'))) {
+    await sleep(apiResponseDelayMs);
+  }
   if (request.method === 'POST' && pathname === '/api/teams') {
     const id = `synthetic-${nextTeam++}`;
     const team = { id, course: body.course, members: body.members.map((name) => ({ name })), levelProgress: progress(1) };
@@ -132,7 +138,48 @@ async function waitForReactGameReady(timeoutMs = 15000) {
   }
   throw new Error('React game route did not report the first rendered Phaser frame');
 }
+async function waitForReactLoadingOverlay(timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const state = await cdp.evaluate(`(() => {
+        const element = [...document.querySelectorAll('.maze-loading-screen')].find((node) =>
+          getComputedStyle(node).display !== 'none' && node.getAttribute('aria-hidden') !== 'true');
+        if (!element) return null;
+        return { text: element.innerText.trim(), role: element.getAttribute('role'),
+          live: element.getAttribute('aria-live'), spinner: Boolean(element.querySelector('.maze-loading-spinner')),
+          spinnerAnimation: getComputedStyle(element.querySelector('.maze-loading-spinner')).animationName };
+      })()`);
+      if (state) return state;
+    } catch (error) {
+      if (!/execution context|context was destroyed/i.test(error.message)) throw error;
+    }
+    await sleep(25);
+  }
+  throw new Error('The accessible game loading screen did not appear during route startup');
+}
+async function waitForGameLoadError(timeoutMs = 10000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const state = await cdp.evaluate(`(() => {
+        const element = document.querySelector('[data-game-load-error="true"]');
+        if (!element) return null;
+        return { role: element.getAttribute('role'), text: element.innerText.trim(),
+          retry: Boolean(element.querySelector('[data-game-load-retry="true"]')),
+          retryFocused: element.querySelector('[data-game-load-retry="true"]') === document.activeElement,
+          menu: Boolean(element.querySelector('a[href="/menu"]')) };
+      })()`);
+      if (state) return state;
+    } catch (error) {
+      if (!/execution context|context was destroyed/i.test(error.message)) throw error;
+    }
+    await sleep(50);
+  }
+  throw new Error('The game route failure screen did not appear after blocking its lazy module');
+}
 async function shot(name) {
+  if (!captureScreenshots) return;
   const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await fs.writeFile(path.join(output, `${name}.png`), Buffer.from(data, 'base64'));
 }
@@ -218,6 +265,64 @@ try {
     }
     return { state, inventory: await cdp.evaluate('anglemazeBaseline.collisionInventory()') };
   });
+  await scenario('canvas-hud-contrast-layout', async () => {
+    const levelResults = [];
+    const expectedTitles = {
+      1: 'Level 1 — Right Angles',
+      2: 'Level 2 — Tricky Angles',
+    };
+    for (const level of [1, 2]) {
+      await fixture(level);
+      const hud = await cdp.evaluate(`(() => {
+        const scene = anglemazeBaseline.scene();
+        const inspect = (text) => {
+          const bounds = text.getBounds();
+          return {
+            text: text.text,
+            visible: text.visible,
+            depth: text.depth,
+            style: {
+              color: text.style.color,
+              backgroundColor: text.style.backgroundColor,
+              fontSize: text.style.fontSize,
+            },
+            bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+          };
+        };
+        return { title: inspect(scene.levelTitleText), coordinates: inspect(scene.coordText) };
+      })()`);
+      await shot(`scene-hud-level${level}`);
+      const hudFields = [hud.title, hud.coordinates];
+      if (hud.title.text !== expectedTitles[level] || !hud.coordinates.text.startsWith('x: ') ||
+          hudFields.some(({ visible, depth, style, bounds }) => !visible || depth < 30 ||
+            style.color !== '#fff4df' || style.backgroundColor !== 'rgba(14, 31, 38, 0.9)' ||
+            style.fontSize !== '12px' || bounds.left < 184 || bounds.top < 0 ||
+            bounds.right > 792 || bounds.bottom > 24 || bounds.bottom - bounds.top < 18) ||
+          hud.title.bounds.right >= hud.coordinates.bounds.left) {
+        throw new Error(`Level ${level} HUD text must be readable, separated, and inside the safe top strip: ${JSON.stringify(hud)}`);
+      }
+      levelResults.push({ level, hud });
+    }
+    const responsiveHud = await cdp.evaluate(`(() => {
+      const scene = anglemazeBaseline.scene();
+      scene.setHudScale(0.45);
+      const phone = {
+        titleVisible: scene.levelTitleText.visible,
+        coordinatesVisible: scene.coordText.visible,
+      };
+      scene.setHudScale(1);
+      const desktop = {
+        titleVisible: scene.levelTitleText.visible,
+        coordinatesVisible: scene.coordText.visible,
+      };
+      return { phone, desktop };
+    })()`);
+    if (responsiveHud.phone.titleVisible || responsiveHud.phone.coordinatesVisible ||
+        !responsiveHud.desktop.titleVisible || !responsiveHud.desktop.coordinatesVisible) {
+      throw new Error(`In-canvas HUD should defer to the larger React status panel on narrow screens: ${JSON.stringify(responsiveHud)}`);
+    }
+    return { levels: levelResults, responsiveHud, playfieldUnchanged: true };
+  });
   await scenario('player-topdown-motion', async () => {
     await fixture(1);
     const before = await cdp.evaluate('anglemazeBaseline.snapshot()');
@@ -226,10 +331,35 @@ try {
     const moving = await cdp.evaluate('anglemazeBaseline.snapshot()');
     await shot('scene-player-topdown-motion');
     const idle = await waitForIdleScene();
-    const settleShadowSample = await cdp.evaluate('window.__playerSettleShadowSample ?? null');
+    let settleShadowSample = null;
+    for (let attempt = 0; attempt < 30 && !settleShadowSample; attempt += 1) {
+      settleShadowSample = await cdp.evaluate('window.__playerSettleShadowSample ?? null');
+      if (!settleShadowSample) await sleep(10);
+    }
     if (!settleShadowSample || settleShadowSample.scaleX <= before.playerContactShadow.scaleX * 1.02 ||
         settleShadowSample.scaleY <= before.playerContactShadow.scaleY * 1.01) {
-      throw new Error(`Expected the contact shadow to spread during landing: ${JSON.stringify(settleShadowSample)}`);
+      const callbackState = await cdp.evaluate(`(() => {
+        const player = anglemazeBaseline.scene().playerSprite;
+        return {
+          callbackStarted: Boolean(window.__playerSettleStarted),
+          callbackShadowStarted: Boolean(window.__playerSettleShadowStarted),
+          contactShadowExists: Boolean(player._contactShadow?.active),
+          currentShadow: player._contactShadow ? {
+            scaleX: player._contactShadow.scaleX,
+            scaleY: player._contactShadow.scaleY,
+            alpha: player._contactShadow.alpha,
+          } : null,
+        };
+      })()`);
+      throw new Error(`Expected the contact shadow to spread during landing: ${JSON.stringify({
+        accepted, sample: settleShadowSample, callbackState, before: before.playerContactShadow,
+        moving: { moving: moving.moving, resetting: moving.resetting, x: moving.x, y: moving.y,
+          reducedMotion: moving.reducedMotion },
+        idle: { moving: idle.moving, resetting: idle.resetting, lives: idle.lives,
+          lastCollisionCause: idle.lastCollisionCause },
+        recentEvents: await cdp.evaluate('anglemazeBaseline.events.slice(-8)'),
+        browserErrors: trace.browserErrors,
+      })}`);
     }
     await shot('scene-player-contact-shadow-settle');
     if (!accepted || !before.playerIdle || moving.playerIdle || before.playerTexture !== 'player' ||
@@ -824,12 +954,152 @@ try {
     }
     return result;
   });
-  await scenario('react-level1-desktop', async () => {
+  await scenario('react-team-hydration-loading', async () => {
+    await navigate('http://127.0.0.1:4178/');
     await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l1');localStorage.setItem('anglemaze:instructionsSeen','true')");
-    await navigate('http://127.0.0.1:4178/game/1'); await waitForReactGameReady(); await shot('react-level1-desktop');
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    apiResponseDelayMs = 750;
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/' });
+    const registrationLoading = await waitForReactLoadingOverlay();
+    await shot('react-registration-team-hydration-loading');
+    if (registrationLoading.role !== 'status' || registrationLoading.live !== 'polite' ||
+        registrationLoading.spinnerAnimation !== 'none' || !registrationLoading.text.includes('Restoring your team')) {
+      throw new Error(`Registration team restoration did not use the accessible branded loader: ${JSON.stringify(registrationLoading)}`);
+    }
+    let registrationReady = false;
+    for (let i = 0; i < 100; i += 1) {
+      registrationReady = await cdp.evaluate("Boolean(document.querySelector('.maze-session-card'))");
+      if (registrationReady) break;
+      await sleep(50);
+    }
+    if (!registrationReady) throw new Error('Registration route did not finish restoring the saved team');
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/menu' });
+    const menuLoading = await waitForReactLoadingOverlay();
+    await shot('react-menu-team-hydration-loading');
+    if (menuLoading.role !== 'status' || menuLoading.live !== 'polite' ||
+        menuLoading.spinnerAnimation !== 'none' || !menuLoading.text.includes('Restoring your team')) {
+      throw new Error(`Level menu team restoration did not use the accessible branded loader: ${JSON.stringify(menuLoading)}`);
+    }
+    let menuReady = false;
+    for (let i = 0; i < 100; i += 1) {
+      menuReady = await cdp.evaluate("Boolean(document.querySelector('.maze-level-card:not(:disabled)'))");
+      if (menuReady) break;
+      await sleep(50);
+    }
+    if (!menuReady) throw new Error('Level menu did not finish restoring the saved team');
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/game/1' });
+    const loadingState = await waitForReactLoadingOverlay();
+    await shot('react-team-hydration-loading');
+    if (loadingState.role !== 'status' || loadingState.live !== 'polite' ||
+        loadingState.spinnerAnimation !== 'none' || !loadingState.text.includes('Restoring your team')) {
+      throw new Error(`Team restoration did not use the accessible branded loader: ${JSON.stringify(loadingState)}`);
+    }
+    await waitForReactGameReady();
+    apiResponseDelayMs = 0;
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    return { registrationLoading, menuLoading, loadingState,
+      registrationRestored: registrationReady, menuRestored: menuReady,
+      teamHydrationCompleted: true, gameReady: true };
+  });
+  await scenario('react-game-route-error-recovery', async () => {
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l1');localStorage.setItem('anglemaze:instructionsSeen','true')");
+    await cdp.send('Network.setBlockedURLs', { urls: ['*GamePage.jsx*'] });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/game/1' });
+    const errorState = await waitForGameLoadError();
+    await shot('react-game-load-error');
+    if (errorState.role !== 'alert' || !errorState.text.includes("couldn't load the maze") ||
+        !errorState.retry || !errorState.retryFocused || !errorState.menu) {
+      throw new Error(`The game route error fallback was incomplete or inaccessible: ${JSON.stringify(errorState)}`);
+    }
+    await cdp.send('Network.setBlockedURLs', { urls: [] });
+    await cdp.evaluate("document.querySelector('[data-game-load-retry=\"true\"]').click()");
+    await waitForReactGameReady();
+    return { errorState, retryRecovered: true, gameReady: true };
+  });
+  await scenario('react-menu-game-module-prefetch', async () => {
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l1');localStorage.setItem('anglemaze:instructionsSeen','true')");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/menu' });
+    let menuReady = false;
+    for (let i = 0; i < 100; i += 1) {
+      menuReady = await cdp.evaluate("Boolean(document.querySelector('.maze-level-card:not(:disabled)'))");
+      if (menuReady) break;
+      await sleep(50);
+    }
+    if (!menuReady) throw new Error('Level menu did not become ready for the prefetch check');
+    const beforeFocus = await cdp.evaluate(`(() => ({
+      canvasCount: document.querySelectorAll('canvas').length,
+      gameModule: performance.getEntriesByType('resource').some(({ name }) => /GamePage/i.test(name)),
+      phaserModule: performance.getEntriesByType('resource').some(({ name }) => /phaser/i.test(name)),
+    }))()`);
+    await cdp.evaluate('document.activeElement.blur()');
+    for (let i = 0; i < 2; i += 1) {
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    }
+    const focusState = await cdp.evaluate(`(() => {
+      const card = document.querySelector('.maze-level-card:not(:disabled)');
+      return { active: document.activeElement === card, disabled: card.disabled, text: document.activeElement.innerText };
+    })()`);
+    let focusPrefetched = null;
+    for (let i = 0; i < 20; i += 1) {
+      focusPrefetched = await cdp.evaluate(`(() => ({
+        canvasCount: document.querySelectorAll('canvas').length,
+        gameModule: performance.getEntriesByType('resource').some(({ name }) => /GamePage/i.test(name)),
+        phaserModule: performance.getEntriesByType('resource').some(({ name }) => /phaser/i.test(name)),
+      }))()`);
+      if (focusPrefetched.gameModule && focusPrefetched.phaserModule) break;
+      await sleep(25);
+    }
+    const cardBounds = await cdp.evaluate(`(() => {
+      const { x, y, width, height } = document.querySelector('.maze-level-card:not(:disabled)').getBoundingClientRect();
+      return { x, y, width, height };
+    })()`);
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0, button: 'none' });
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: cardBounds.x + cardBounds.width / 2,
+      y: cardBounds.y + cardBounds.height / 2, button: 'none',
+    });
+    let prefetched = null;
+    for (let i = 0; i < 100; i += 1) {
+      prefetched = await cdp.evaluate(`(() => ({
+        canvasCount: document.querySelectorAll('canvas').length,
+        gameModule: performance.getEntriesByType('resource').some(({ name }) => /GamePage/i.test(name)),
+        phaserModule: performance.getEntriesByType('resource').some(({ name }) => /phaser/i.test(name)),
+      }))()`);
+      if (prefetched.gameModule && prefetched.phaserModule) break;
+      await sleep(50);
+    }
+    if (beforeFocus.gameModule || beforeFocus.phaserModule || beforeFocus.canvasCount !== 0 ||
+        !focusState.active || !focusPrefetched.gameModule || !focusPrefetched.phaserModule || focusPrefetched.canvasCount !== 0 ||
+        !prefetched.gameModule || !prefetched.phaserModule || prefetched.canvasCount !== 0) {
+      const resources = await cdp.evaluate(`performance.getEntriesByType('resource').map(({ name }) => name).filter((name) => /game|phaser/i.test(name))`);
+      throw new Error(`Level focus/hover did not prefetch the game module without starting the scene: ${JSON.stringify({ beforeFocus, focusState, focusPrefetched, prefetched, resources })}`);
+    }
+    await cdp.evaluate("document.querySelector('.maze-level-card:not(:disabled)').click()");
+    await waitForReactGameReady();
+    return { beforeFocus, focusState, focusPrefetched, prefetched, gameReadyAfterSelection: true };
+  });
+  await scenario('react-level1-desktop', async () => {
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l1');localStorage.setItem('anglemaze:instructionsSeen','true')");
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/game/1' });
+    const loadingState = await waitForReactLoadingOverlay();
+    await shot('react-game-loading-screen-reduced-motion');
+    await waitForReactGameReady(); await shot('react-level1-desktop');
     const result = await cdp.evaluate(`(() => ({ url: location.href,
       canvasCount: document.querySelectorAll('canvas').length, text: document.body.innerText,
       gameReady: document.querySelector('[data-game-ready="true"]') !== null,
+      sceneLoader: (() => {
+        const loader = document.querySelector('.maze-scene-loading');
+        return loader ? { display: getComputedStyle(loader).display,
+          ariaHidden: loader.getAttribute('aria-hidden') } : null;
+      })(),
       layout: (() => {
         const rect = (element) => {
           if (!element) return null;
@@ -851,10 +1121,15 @@ try {
       })(),
       gameModules: performance.getEntriesByType('resource').map(({ name }) => name)
         .filter((name) => /phaser|MazeScene|\\/game\\/config\\.js/i.test(name)) }))()`);
-    if (result.canvasCount !== 1 || !result.gameModules.length || !result.gameReady) {
-      throw new Error(`Game route did not load the deferred Phaser modules: ${JSON.stringify(result)}`);
+    if (result.canvasCount !== 1 || !result.gameModules.length || !result.gameReady ||
+        loadingState.role !== 'status' || loadingState.live !== 'polite' ||
+        !loadingState.spinner || loadingState.spinnerAnimation !== 'none' ||
+        !loadingState.text.includes('AngleMaze') ||
+        result.sceneLoader?.display !== 'none' || result.sceneLoader?.ariaHidden !== 'true') {
+      throw new Error(`Game route loading/ready states did not meet the accessible loading contract: ${JSON.stringify({ loadingState, result })}`);
     }
-    return result;
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    return { loadingState, ...result };
   });
   await scenario('react-level2-phone', async () => {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
@@ -1046,6 +1321,17 @@ try {
     return { desktop, tablet, protractorRemainedEnabled: true };
   });
   await scenario('react-phone-protractor-toggle', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+    });
+    await navigate('http://127.0.0.1:4178/');
+    await cdp.evaluate("localStorage.setItem('anglemaze:teamId','baseline-l2');localStorage.setItem('anglemaze:instructionsSeen','true')");
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4178/game/2' });
+    await waitForReactGameReady();
+
     const read = () => cdp.evaluate(`(() => {
       const button = document.querySelector('.maze-protractor-toggle');
       return { label: button?.textContent.trim(), pressed: button?.getAttribute('aria-pressed'),

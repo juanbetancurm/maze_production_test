@@ -1,6 +1,6 @@
 # Implementation roadmap and quality gates
 
-Purpose: deliver the major visual transformation first, with measurable protection for the existing educational game. Tasks are specified in [the backlog](06-development-backlog.md); this file owns phase order, rollout and shared test definitions. No phase has been implemented by this planning task.
+Purpose: deliver the major visual transformation first, with measurable protection for the existing educational game. Tasks are specified in [the backlog](06-development-backlog.md); this file owns phase order, rollout and shared test definitions. Implementation is underway; the current delivery and remaining release gates are summarized in the [entry point](README.md) and [current regression evidence](evidence/full-regression-after-timer-scope-v2/README.md).
 
 ## Phases and gates
 

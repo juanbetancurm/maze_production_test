@@ -952,11 +952,18 @@ export default class MazeScene extends Phaser.Scene {
       ? 'Level 2 — Tricky Angles'
       : 'Level 1 — Right Angles';
 
-    this.add.text(10, 8, levelName, {
-      fontSize: '13px',
-      color: '#667788',
-      fontFamily: 'monospace',
-    }).setDepth(30);
+    const hudTextStyle = {
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#fff4df',
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: 'rgba(14, 31, 38, 0.9)',
+      padding: { x: 8, y: 3 },
+    };
+    // Level 2's exit sits near the upper-left corner. Keep the title to its
+    // right so this high-depth overlay never covers the objective art.
+    this.levelTitleText = this.add.text(194, 2, levelName, { ...hudTextStyle })
+      .setDepth(30);
 
     // WHAT: `physics.add.overlap(A, B, callback)` calls `callback` each frame
     //   that A and B's bounding boxes intersect — without any physical push.
@@ -1095,11 +1102,10 @@ export default class MazeScene extends Phaser.Scene {
     //   Origins go from 0 to 1 along each axis. (1, 0) means "anchor the
     //   RIGHT edge of the text to x, and the TOP edge to y". This right-aligns
     //   the label inside the top-right corner of the canvas.
-    this.coordText = this.add.text(790, 8, '', {
-      fontSize: '13px',
-      color: '#aaaaaa',
-      fontFamily: 'monospace',
-    }).setOrigin(1, 0).setDepth(30);
+    this.coordText = this.add.text(784, 2, '', { ...hudTextStyle })
+      .setOrigin(1, 0)
+      .setDepth(30);
+    this.setHudScale(this.game._gameScale ?? 1);
 
 
     // ── 12. Initial direction preview ──────────────────────────────────────────
@@ -1474,6 +1480,13 @@ export default class MazeScene extends Phaser.Scene {
   setProtractorScale(gameScale) {
     this.game._gameScale = gameScale;
     this.protractorView?.setScreenScale(gameScale);
+  }
+
+  setHudScale(gameScale) {
+    const scale = Number.isFinite(gameScale) ? gameScale : 1;
+    const visible = scale >= 0.6;
+    this.levelTitleText?.setVisible(visible);
+    this.coordText?.setVisible(visible);
   }
 
    /**

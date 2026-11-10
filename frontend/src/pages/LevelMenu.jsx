@@ -10,6 +10,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/useGame.js';
 import { getLeaderboard } from '../lib/api';
+import { preloadGamePage } from '../routes/gameRoute.js';
+import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 
 const LEVELS = [
   {
@@ -102,11 +104,7 @@ export default function LevelMenu() {
   }, [team, levelProgress]);
 
   if (isHydrating) {
-    return (
-      <div className="maze-experience maze-page-shell maze-level-page">
-        Restoring saved team...
-      </div>
-    );
+    return <GameLoadingScreen label="Restoring your team…" />;
   }
 
   return (
@@ -154,6 +152,10 @@ export default function LevelMenu() {
           const isPlayable = progress.unlocked && !progress.completed;
           const leaderboard = leaderboards[level.num];
           const leaderboardError = leaderboardErrors[level.num];
+          const prefetchGamePage = () => {
+            if (!isPlayable) return;
+            preloadGamePage().catch(() => {});
+          };
 
           return (
             <div key={level.num} className="maze-level-wrap">
@@ -162,6 +164,8 @@ export default function LevelMenu() {
                 disabled={!isPlayable}
                 className={`maze-level-card${isLocked ? ' is-locked' : ''}${isCompleted ? ' is-completed' : ''}`}
                 style={{ '--level-accent': level.color }}
+                onPointerEnter={prefetchGamePage}
+                onFocusCapture={prefetchGamePage}
               >
                 <div className="maze-level-head">
                   <span className="maze-level-title">

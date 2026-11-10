@@ -1,0 +1,110 @@
+{
+  "startedAt": "2026-11-10T02:44:59.977Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [
+    {
+      "name": "react-game-route-error-recovery",
+      "result": {
+        "errorState": {
+          "role": "alert",
+          "text": "We couldn't load the maze\n\nThe game did not finish loading. Check your connection and try again.\n\nRetry loading\nBack to levels",
+          "retry": true,
+          "menu": true
+        },
+        "retryRecovered": true,
+        "gameReady": true
+      }
+    }
+  ],
+  "limitations": [
+    "Headless browser frame observation is not a real mobile/GPU performance benchmark.",
+    "Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.",
+    "The isolated scene does not own React move counters or persistence; React observations are reported separately.",
+    "Real-device coverage remains unmeasured in this run."
+  ],
+  "head": "b0ec82681b97db6180b93bda08174a0c79d95bb0",
+  "trackedDiffBefore": "docs/graphics-upgrade/06-development-backlog.md\ndocs/graphics-upgrade/09-manual-verification.md\ndocs/graphics-upgrade/README.md\nfrontend/src/App.jsx\nfrontend/src/index.css\nfrontend/src/pages/GamePage.jsx\nfrontend/tests/graphics/run-baseline.mjs",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "browserSandbox": "disabled for isolated local fixture",
+  "debugPort": 55333,
+  "browser": {
+    "Browser": "Chrome/157.0.8103.39",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "V8-Version": "15.7.112.23",
+    "WebKit-Version": "537.36 (@9a31f0acec1854d44e49a73fbf8017598151a583)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:55333/devtools/browser/f99eb594-4400-4426-8ca3-6050467aff58"
+  },
+  "browserTargets": [
+    {
+      "id": "48BF7FBECA0EBBA991E6A721AEAA68CF",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    },
+    {
+      "id": "40DEE9651EF72F43BFFA5C759A0B2B76",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "staleFetchInterceptions": 0,
+  "finishedAt": "2026-11-10T02:45:08.269Z",
+  "apiRequests": [
+    {
+      "at": "2026-11-10T02:45:03.274Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-10T02:45:03.282Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-10T02:45:04.147Z",
+      "method": "GET",
+      "pathname": "/api/teams/baseline-l1",
+      "body": null
+    },
+    {
+      "at": "2026-11-10T02:45:04.149Z",
+      "method": "GET",
+      "pathname": "/api/progress/baseline-l1",
+      "body": null
+    }
+  ],
+  "premiumAssetRequests": [
+    "/assets/premium/environment/grass-reference-v4-normal.png",
+    "/assets/premium/environment/grass-reference-v4.jpg",
+    "/assets/premium/environment/walls-reference-kit.png",
+    "/assets/premium/environment/wall-join-v1.png",
+    "/assets/premium/characters/player-normal.png",
+    "/assets/premium/characters/player-topdown-v2.png",
+    "/assets/premium/characters/player-walk-cycle-v2-2x.png",
+    "/assets/premium/objects/exit-base-v1.png",
+    "/assets/premium/objects/checkpoint-active-v3.webp",
+    "/assets/premium/objects/checkpoint-claimed-v3.webp",
+    "/assets/premium/environment/grass-reference-v4-normal.png",
+    "/assets/premium/environment/grass-reference-v4.jpg",
+    "/assets/premium/environment/walls-reference-kit.png",
+    "/assets/premium/environment/wall-join-v1.png",
+    "/assets/premium/characters/player-normal.png",
+    "/assets/premium/characters/player-topdown-v2.png",
+    "/assets/premium/characters/player-walk-cycle-v2-2x.png",
+    "/assets/premium/objects/exit-base-v1.png",
+    "/assets/premium/objects/checkpoint-active-v3.webp",
+    "/assets/premium/objects/checkpoint-claimed-v3.webp"
+  ],
+  "fetchInterceptionErrors": []
+}

@@ -6,55 +6,62 @@
  * HOW: A small wrapper checks hydration state and redirects to registration
  *   when protected routes are accessed without a team.
  */
-import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Component, createRef, Suspense } from 'react';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useGame } from './context/useGame.js';
+import GameLoadingScreen from './components/GameLoadingScreen.jsx';
+import { GamePageRoute } from './routes/gameRoute.js';
 import Registration from './pages/Registration';
 import LevelMenu from './pages/LevelMenu';
 import AdminPage from './pages/AdminPage';
 
-// Keep Phaser and its scene graph out of the registration/menu download.
-const GamePage = lazy(() => import('./pages/GamePage'));
+class GameRouteErrorBoundary extends Component {
+  state = { failed: false };
+  retryButtonRef = createRef();
 
-function GamePageLoading() {
-  return (
-    <main
-      className="maze-experience maze-loading-screen"
-      role="status"
-      aria-live="polite"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: '24px',
-      }}
-    >
-      Loading game...
-    </main>
-  );
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('Game route failed to load:', error);
+  }
+
+  componentDidUpdate(previousProps, previousState) {
+    if (!previousState.failed && this.state.failed) {
+      this.retryButtonRef.current?.focus();
+    }
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+
+    return (
+      <main className="maze-experience maze-load-error" role="alert" data-game-load-error="true">
+        <h1 className="maze-page-title">We couldn&apos;t load the maze</h1>
+        <p>The game did not finish loading. Check your connection and try again.</p>
+        <div className="maze-load-error-actions">
+          <button
+            type="button"
+            className="maze-action-btn maze-action-btn-success"
+            data-game-load-retry="true"
+            ref={this.retryButtonRef}
+            onClick={() => window.location.reload()}
+          >
+            Retry loading
+          </button>
+          <Link to="/menu" className="maze-pill-btn maze-load-error-menu">Back to levels</Link>
+        </div>
+      </main>
+    );
+  }
 }
 
 function RequireTeam({ children }) {
   const { team, isHydrating } = useGame();
 
   if (isHydrating) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '24px',
-          fontFamily: 'monospace',
-          color: '#99aabb',
-        }}
-      >
-        Restoring saved team...
-      </div>
-    );
+    return <GameLoadingScreen label="Restoring your team…" />;
   }
 
   if (!team) {
@@ -81,9 +88,11 @@ export default function App() {
         path="/game/:levelNum"
         element={(
           <RequireTeam>
-            <Suspense fallback={<GamePageLoading />}>
-              <GamePage />
-            </Suspense>
+            <GameRouteErrorBoundary>
+              <Suspense fallback={<GameLoadingScreen label="Loading game…" />}>
+                <GamePageRoute />
+              </Suspense>
+            </GameRouteErrorBoundary>
           </RequireTeam>
         )}
       />

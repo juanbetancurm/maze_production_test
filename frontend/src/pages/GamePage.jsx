@@ -25,10 +25,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
+import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 import config from '../game/config.js';
 import { normalizeProgressResponse } from '../context/progress.js';
 import { useGame } from '../context/useGame.js';
 import { completeLevel as saveCompletedLevel } from '../lib/api';
+import { createTimeoutScope } from '../lib/timeoutScope.js';
 
 function formatElapsedTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -219,7 +221,9 @@ export default function GamePage() {
       const scale = getResponsiveGameScale(width, height);
       if (gameRef.current) {
         gameRef.current._gameScale = scale;
-        gameRef.current.scene.getScene('MazeScene')?.setProtractorScale?.(scale);
+        const scene = gameRef.current.scene.getScene('MazeScene');
+        scene?.setProtractorScale?.(scale);
+        scene?.setHudScale?.(scale);
       }
     }
 
@@ -232,6 +236,8 @@ export default function GamePage() {
 
   useEffect(() => {
     if (gameRef.current !== null) return; // React 18 StrictMode double-mount guard
+    const timeoutScope = createTimeoutScope();
+    let effectActive = true;
 
     // Make the selected level available to Phaser preload before its first
     // scene starts so level-specific art can be loaded on demand.
@@ -333,7 +339,7 @@ export default function GamePage() {
 
       if (wasRestart) {
         setEncourageMsg('Try again! You got this!');
-        setTimeout(() => setEncourageMsg(''), 3000);
+        timeoutScope.replace('encourage-message', () => setEncourageMsg(''), 3000);
       }
     };
 
@@ -350,7 +356,7 @@ export default function GamePage() {
       setLives(newLives);
       if (checkpointLabel) {
         setCheckpointMsg(`✓ ${checkpointLabel}`);
-        setTimeout(() => setCheckpointMsg(''), 2000);
+        timeoutScope.replace('checkpoint-message', () => setCheckpointMsg(''), 2000);
       }
     };
 
@@ -401,9 +407,12 @@ export default function GamePage() {
         completeLevel(levelNum);
       }
 
+      if (!effectActive) return;
+
       // Navigate back to the level menu after a short celebration delay.
       // The delay gives the "You Win!" message time to display.
-      setTimeout(() => {
+      timeoutScope.replace('win-navigation', () => {
+        if (!effectActive) return;
         // Destroy the Phaser game before navigating away.
         gameRef.current?.destroy(true);
         gameRef.current = null;
@@ -418,6 +427,8 @@ export default function GamePage() {
     // WHY: Destroys the Phaser game to free memory and prevent canvas leaks.
     // RULE: Nothing can come after `return` — JavaScript stops executing here.
     return () => {
+      effectActive = false;
+      timeoutScope.clearAll();
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
@@ -592,19 +603,7 @@ export default function GamePage() {
 
   if (isHydrating || !team || !canPlayLevel) {
     return (
-      <div
-        className="maze-experience maze-loading-screen"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '24px',
-        }}
-      >
-        Loading level...
-      </div>
+      <GameLoadingScreen label={isHydrating ? 'Restoring your team…' : 'Loading level…'} />
     );
   }
 
@@ -714,16 +713,14 @@ export default function GamePage() {
             }}
           >
             <div id="game-container" style={{ flexShrink: 0 }} />
-            <div
-              data-game-ready={gameReady ? 'true' : 'false'}
+            <GameLoadingScreen
+              variant="scene"
               className="maze-scene-loading"
-              role={gameReady ? undefined : 'status'}
-              aria-live="polite"
+              label="Preparing maze…"
+              data-game-ready={gameReady ? 'true' : 'false'}
               aria-hidden={gameReady ? 'true' : undefined}
               style={{ display: gameReady ? 'none' : 'flex' }}
-            >
-              Preparing maze...
-            </div>
+            />
           </div>
         </div>
 

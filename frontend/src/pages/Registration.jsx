@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/useGame.js';
+import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 import { createTeam } from '../lib/api';
 
 const INSTRUCTIONS_STORAGE_KEY = 'anglemaze:instructionsSeen';
@@ -77,13 +78,7 @@ export default function Registration() {
   };
 
   if (isHydrating) {
-    return (
-      <div
-        className="maze-experience maze-page-shell maze-registration-page"
-      >
-        Restoring saved team...
-      </div>
-    );
+    return <GameLoadingScreen label="Restoring your team…" />;
   }
 
   return (
