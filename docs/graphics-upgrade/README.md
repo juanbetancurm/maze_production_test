@@ -77,4 +77,4 @@ The latest asset pass keeps the same authored walk poses while using a reviewed 
 
 Fourteen additional historical environment and checkpoint references totaling 11,512,388 bytes, along with three unused character candidates, were moved from Vite's public directory into the source archive after confirming no runtime source references. Their exact bytes were preserved and SHA-256 verified. The current grass, wall kit, player, golem, exit, and transparent checkpoint assets remain available. See [asset payload cleanup](evidence/asset-payload-cleanup-v1/README.md).
 
-`npm run build` now enforces the premium-art inventory and an 8 MB aggregate budget, checks the reduced atlas dimensions and file caps, and fails if archived candidate art reappears in `dist/`.
+`npm test` runs 18 geometry regressions for collision, facing, actor depth and wall projection. `npm run build` runs that suite before Vite, then enforces the premium-art inventory, 8 MB aggregate budget, reduced atlas dimensions and file caps, and fails if archived candidate art reappears anywhere in `dist/`.

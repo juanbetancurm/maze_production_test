@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const premiumRoot = path.join(frontendRoot, 'dist', 'assets', 'premium');
 const distRoot = path.join(frontendRoot, 'dist');
-const sourceArchiveRoot = path.join(frontendRoot, '..', 'docs', 'graphics-upgrade', 'source-assets');
+const archivedAssetsManifestPath = path.join(frontendRoot, 'tests', 'graphics', 'archived-art-assets.json');
 const maxPremiumBytes = 8_000_000;
 const expectedAssets = new Map([
   ['characters/golem-static-v2.png', 1_100_000],
@@ -58,11 +58,15 @@ try {
     throw new Error(`Premium asset inventory mismatch. Missing: ${missing.join(', ') || 'none'}. Unexpected: ${unexpected.join(', ') || 'none'}.`);
   }
 
-  const archivedImageNames = new Set((await listFiles(sourceArchiveRoot))
-    .filter(asset => /\.(?:png|jpe?g|webp)$/i.test(asset))
-    .map(asset => path.posix.basename(asset)));
+  const archivedImageNames = JSON.parse(await fs.readFile(archivedAssetsManifestPath, 'utf8'));
+  if (!Array.isArray(archivedImageNames) || archivedImageNames.some(asset =>
+    typeof asset !== 'string' || path.posix.basename(asset) !== asset || !/\.(?:png|jpe?g|webp)$/i.test(asset)) ||
+    new Set(archivedImageNames).size !== archivedImageNames.length) {
+    throw new Error('Archived art manifest must contain unique image basenames only.');
+  }
+  const archivedImageNameSet = new Set(archivedImageNames);
   const distFiles = await listFiles(distRoot);
-  const archivedAssetsInBuild = distFiles.filter(asset => archivedImageNames.has(path.posix.basename(asset)));
+  const archivedAssetsInBuild = distFiles.filter(asset => archivedImageNameSet.has(path.posix.basename(asset)));
   if (archivedAssetsInBuild.length) {
     throw new Error(`Archived candidate art found in dist: ${archivedAssetsInBuild.join(', ')}.`);
   }

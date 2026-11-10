@@ -33,7 +33,7 @@ The player and golem use sprite-alpha-derived convex footprints for physical gol
 5. Check collision feedback: restart Level 1, then run `await anglemazeBaseline.command('left', 180)` and `await anglemazeBaseline.command('forward', 100)`. The existing life-loss/respawn behavior should occur; `playerImpact` should be true immediately after contact, then return to false. Do not interpret the shadow or squash as an extension of the physics body.
 6. Check the exit: run `anglemazeBaseline.place(690, 540, 0)` and `await anglemazeBaseline.command('forward', 50)`. The exit should brighten on activation, `won` should become true, and `visuals.exitActivated` should be true. Exit trigger position/size and win behavior must remain unchanged.
 7. Reload with `?level=2` and repeat the movement/turn checks. Confirm golems do not patrol or move. For the React Protractor control, open `http://127.0.0.1:5173/` with the local backend available on `localhost:3001`, register a disposable local test team, choose Level 2, and toggle **Protractor**. The button should update its pressed state, the bearing should match the player, and turning should update the signed arc without changing position or move count. Do not run this step against production data.
-8. Use the Canvas fallback option (?renderer=canvas) and reload. Light2D should be disabled, no normal maps should be downloaded, and the base color art, RenderTexture wall composition, and extracted checkpoint badges should remain visible with no console errors. Captured Canvas evidence is in [the wall projection review](evidence/wall-projection-review/maze-wall-orientation.png). The latest focused Chrome regression successfully exercised seven scene and React scenarios, but this is not a full suite run; details, trace and WebGL/phone screenshots are in [the focused regression report](evidence/final-review-after-collision-retry/README.md).
+8. Use the Canvas fallback option (?renderer=canvas) and reload. Light2D should be disabled, no normal maps should be downloaded, and the base color art, RenderTexture wall composition, and extracted checkpoint badges should remain visible with no console errors. The current 33-scenario Chrome regression covers WebGL/Canvas, grass and atlas loading, player/golem collision and movement, level interactions, reduced motion, responsive layouts and Protractor behavior; traces and selected screenshots are in [current regression evidence](evidence/focused-regression-browserfix-v1/README.md).
 
 ## Reduced motion
 
@@ -52,14 +52,14 @@ Remove-Item Env:ANGLEMAZE_BROWSER_NO_SANDBOX
 
 The no-sandbox flag is a local workaround for this workstation's headless Chrome `Page.enable` hang; it applies only to the test browser, not production. The harness intercepts all requests and blocks non-local origins. Set `ANGLEMAZE_EVIDENCE_DIR` to a new evidence folder before running if you need to retain the trace without replacing the default baseline folder. The existing successful batches and screenshots are in [current regression evidence](evidence/focused-regression-browserfix-v1/README.md).
 
-The production build also runs the asset inventory and size gate automatically:
+The geometry unit suite is available as `npm.cmd test`; the production build runs it first, then runs Vite and the asset inventory gate:
 
 ```powershell
 npm.cmd run build
 ```
 
-It verifies that manifest paths exist in `dist`, only the 11 intended premium images are shipped, each image stays under its individual cap, the walk atlas remains 384×384, and the combined premium-image payload stays below 8,000,000 bytes.
+The geometry suite covers actor depth/facing, player-golem collision, and wall joins/projection. The asset gate verifies that manifest paths exist in `dist`, only the 11 intended premium images are shipped, each image stays under its individual cap, the walk atlas remains 384×384, the combined premium-image payload stays below 8,000,000 bytes, and archived art is absent from the full build output. The archived basenames are listed in `frontend/tests/graphics/archived-art-assets.json`, inside the frontend-only Docker build context; update that list when archiving new art.
 
 ## Report back
 
-If any check fails, send the browser/version, which URL and step, the console output of `anglemazeBaseline.snapshot()`, and a screenshot. The prior 16-scenario pass predates the latest visual changes; use the focused regression evidence as the current automated baseline, while treating physical-device, long-session, and real-GPU checks as outstanding.
+If any check fails, send the browser/version, which URL and step, the console output of `anglemazeBaseline.snapshot()`, and a screenshot. The current automated baseline is the 33-scenario Chrome run linked above. Physical-device, Firefox/WebKit, long-session heap, and real-GPU checks remain outstanding.

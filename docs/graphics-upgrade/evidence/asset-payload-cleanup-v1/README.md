@@ -10,6 +10,8 @@ Before removing the files, each was copied into the source archive and verified 
 
 ## Validation
 
+- `npm test`: passed with 18 geometry checks covering collision hulls, actor facing/depth, wall joins, and wall projection. `npm run build` now runs these checks before Vite.
 - `npm run lint`: passed.
 - `npm run build`: passed; it now runs `tests/graphics/check-asset-bundle.mjs`, which checks manifest-to-build path agreement, the exact 11-file runtime inventory, per-file limits, the 384 × 384 atlas dimensions, and the 8 MB total budget. Every image in the source archive is absent from `dist/`. The build gate scans the complete output tree.
+- The archived image basenames are checked against `frontend/tests/graphics/archived-art-assets.json`; keeping the inventory in the frontend context makes the same guard work in Docker builds.
 - Actual-scene WebGL and Canvas checks load the optimized grass JPEG/normal map and resized walk atlas. All 33 graphics/gameplay/UI scenarios pass with zero browser errors; see [the current regression report](../focused-regression-browserfix-v1/README.md).
