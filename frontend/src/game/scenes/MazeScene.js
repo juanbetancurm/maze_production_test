@@ -962,8 +962,13 @@ export default class MazeScene extends Phaser.Scene {
     };
     // Level 2's exit sits near the upper-left corner. Keep the title to its
     // right so this high-depth overlay never covers the objective art.
+    // Keep these scene-side references for diagnostics and legacy tooling, but
+    // render the user-facing HUD in the browser-aligned SVG layer. SVG text is
+    // rasterized at the final display density and therefore remains sharp when
+    // React scales the fixed logical 800x600 game surface.
     this.levelTitleText = this.add.text(194, 2, levelName, { ...hudTextStyle })
-      .setDepth(30);
+      .setDepth(30)
+      .setVisible(false);
 
     // WHAT: `physics.add.overlap(A, B, callback)` calls `callback` each frame
     //   that A and B's bounding boxes intersect — without any physical push.
@@ -1104,7 +1109,8 @@ export default class MazeScene extends Phaser.Scene {
     //   the label inside the top-right corner of the canvas.
     this.coordText = this.add.text(784, 2, '', { ...hudTextStyle })
       .setOrigin(1, 0)
-      .setDepth(30);
+      .setDepth(30)
+      .setVisible(false);
     this.setHudScale(this.game._gameScale ?? 1);
 
 
@@ -1483,10 +1489,11 @@ export default class MazeScene extends Phaser.Scene {
   }
 
   setHudScale(gameScale) {
-    const scale = Number.isFinite(gameScale) ? gameScale : 1;
-    const visible = scale >= 0.6;
-    this.levelTitleText?.setVisible(visible);
-    this.coordText?.setVisible(visible);
+    // The canvas text copies are intentionally hidden. The aligned SVG overlay
+    // uses the same responsive visibility threshold and stays vector-sharp.
+    this.game._gameScale = Number.isFinite(gameScale) ? gameScale : 1;
+    this.levelTitleText?.setVisible(false);
+    this.coordText?.setVisible(false);
   }
 
    /**

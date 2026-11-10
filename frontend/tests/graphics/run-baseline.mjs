@@ -275,53 +275,18 @@ try {
       await fixture(level);
       const hud = await cdp.evaluate(`(() => {
         const scene = anglemazeBaseline.scene();
-        const inspect = (text) => {
-          const bounds = text.getBounds();
-          return {
-            text: text.text,
-            visible: text.visible,
-            depth: text.depth,
-            style: {
-              color: text.style.color,
-              backgroundColor: text.style.backgroundColor,
-              fontSize: text.style.fontSize,
-            },
-            bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
-          };
-        };
-        return { title: inspect(scene.levelTitleText), coordinates: inspect(scene.coordText) };
+        return { title: scene.levelTitleText.text, coordinates: scene.coordText.text,
+          canvasHudHidden: !scene.levelTitleText.visible && !scene.coordText.visible,
+          logicalWorld: { width: scene.scale.width, height: scene.scale.height } };
       })()`);
       await shot(`scene-hud-level${level}`);
-      const hudFields = [hud.title, hud.coordinates];
-      if (hud.title.text !== expectedTitles[level] || !hud.coordinates.text.startsWith('x: ') ||
-          hudFields.some(({ visible, depth, style, bounds }) => !visible || depth < 30 ||
-            style.color !== '#fff4df' || style.backgroundColor !== 'rgba(14, 31, 38, 0.9)' ||
-            style.fontSize !== '12px' || bounds.left < 184 || bounds.top < 0 ||
-            bounds.right > 792 || bounds.bottom > 24 || bounds.bottom - bounds.top < 18) ||
-          hud.title.bounds.right >= hud.coordinates.bounds.left) {
-        throw new Error(`Level ${level} HUD text must be readable, separated, and inside the safe top strip: ${JSON.stringify(hud)}`);
+      if (hud.title !== expectedTitles[level] || !hud.canvasHudHidden ||
+          hud.logicalWorld.width !== 800 || hud.logicalWorld.height !== 600) {
+        throw new Error(`The legacy canvas HUD should be hidden while the 800x600 world remains unchanged: ${JSON.stringify(hud)}`);
       }
       levelResults.push({ level, hud });
     }
-    const responsiveHud = await cdp.evaluate(`(() => {
-      const scene = anglemazeBaseline.scene();
-      scene.setHudScale(0.45);
-      const phone = {
-        titleVisible: scene.levelTitleText.visible,
-        coordinatesVisible: scene.coordText.visible,
-      };
-      scene.setHudScale(1);
-      const desktop = {
-        titleVisible: scene.levelTitleText.visible,
-        coordinatesVisible: scene.coordText.visible,
-      };
-      return { phone, desktop };
-    })()`);
-    if (responsiveHud.phone.titleVisible || responsiveHud.phone.coordinatesVisible ||
-        !responsiveHud.desktop.titleVisible || !responsiveHud.desktop.coordinatesVisible) {
-      throw new Error(`In-canvas HUD should defer to the larger React status panel on narrow screens: ${JSON.stringify(responsiveHud)}`);
-    }
-    return { levels: levelResults, responsiveHud, playfieldUnchanged: true };
+    return { levels: levelResults, overlay: 'browser SVG on production React route', playfieldUnchanged: true };
   });
   await scenario('player-topdown-motion', async () => {
     await fixture(1);
@@ -1167,8 +1132,11 @@ try {
     await waitForReactGameReady();
     const viewports = [
       { name: 'desktop-short-1352x557', width: 1352, height: 557, mobile: false },
+      { name: 'compact-laptop-1280x720', width: 1280, height: 720, mobile: false },
+      { name: 'laptop-1366x768', width: 1366, height: 768, mobile: false },
       { name: 'desktop-1315x755', width: 1315, height: 755, mobile: false },
       { name: 'desktop-1440x900', width: 1440, height: 900, mobile: false },
+      { name: 'desktop-dpr2-1920x1080', width: 1920, height: 1080, mobile: false, dpr: 2 },
       { name: 'phone-360x800', width: 360, height: 800, mobile: true },
       { name: 'tablet-768x1024', width: 768, height: 1024, mobile: false },
       { name: 'phone-landscape-844x390', width: 844, height: 390, mobile: true },
@@ -1178,11 +1146,15 @@ try {
       await cdp.send('Emulation.setDeviceMetricsOverride', {
         width: viewport.width,
         height: viewport.height,
-        deviceScaleFactor: 1,
+        deviceScaleFactor: viewport.dpr ?? 1,
         mobile: viewport.mobile,
       });
       await cdp.evaluate('window.dispatchEvent(new Event("resize"))');
       await sleep(600);
+      if (viewport.name === 'laptop-1366x768') {
+        await cdp.evaluate("document.querySelector('.maze-protractor-toggle')?.click()");
+        await sleep(180);
+      }
       const layout = await cdp.evaluate(`(() => {
         const canvas = document.querySelector('#game-container canvas');
         const rect = canvas?.getBoundingClientRect();
@@ -1198,9 +1170,40 @@ try {
           canvasCount: document.querySelectorAll('#game-container canvas').length,
           documentWidth: document.documentElement.scrollWidth,
           documentHeight: document.documentElement.scrollHeight,
+          devicePixelRatio,
           canvas: rect ? { left: rect.left, right: rect.right, width: rect.width, height: rect.height } : null,
+          mathOverlay: (() => {
+            const svg = document.querySelector('[data-math-overlay="true"]');
+            const overlay = svg?.getBoundingClientRect();
+            const hud = svg?.querySelector('.maze-math-hud');
+            return overlay ? { left: overlay.left, right: overlay.right, top: overlay.top,
+              bottom: overlay.bottom, width: overlay.width, height: overlay.height,
+              vectorTextCount: svg.querySelectorAll('text').length,
+              protractorLabelCount: svg.querySelectorAll('.maze-math-protractor > text').length,
+              titleVisible: hud?.getAttribute('display') !== 'none',
+              levelText: hud?.querySelector('text')?.textContent,
+              viewBox: svg.getAttribute('viewBox') } : null;
+          })(),
+          protractorCheck: (() => {
+            const overlay = document.querySelector('[data-math-overlay="true"]');
+            const group = overlay?.querySelector('.maze-math-protractor');
+            const position = document.querySelector('.maze-game-status-row strong')?.textContent ?? '';
+            const player = position.replace(/[()]/g, '').split(',').map((value) => Number(value.trim()));
+            const transform = group?.getAttribute('transform') ?? '';
+            const anchor = transform.match(/[0-9.]+/g)?.map(Number) ?? null;
+            const coordinateBackground = overlay?.querySelector('.maze-math-hud rect:nth-of-type(2)');
+            const eastTick = group?.querySelector('line[data-bearing="0"]');
+            const northTick = group?.querySelector('line[data-bearing="90"]');
+            return { pointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : null,
+              transform, alpha: Number(group?.getAttribute('opacity') ?? 0),
+              anchor, player,
+              coordinateBackgroundX: Number(coordinateBackground?.getAttribute('x')),
+              eastTickX: Number(eastTick?.getAttribute('x2')),
+              northTickY: Number(northTick?.getAttribute('y2')) };
+          })(),
           controls: controlsRect ? { left: controlsRect.left, right: controlsRect.right,
-            top: controlsRect.top, width: controlsRect.width, height: controlsRect.height } : null,
+            top: controlsRect.top, bottom: controlsRect.bottom,
+            width: controlsRect.width, height: controlsRect.height } : null,
           shell: shellRect ? { left: shellRect.left, right: shellRect.right, top: shellRect.top,
             bottom: shellRect.bottom, width: shellRect.width, height: shellRect.height } : null,
           wrapper: wrapperRect ? { left: wrapperRect.left, right: wrapperRect.right,
@@ -1215,18 +1218,35 @@ try {
         layout.canvas.left >= -1 && layout.canvas.right <= viewport.width + 1 &&
           layout.documentWidth <= viewport.width + 1 &&
           (viewport.name !== 'desktop-short-1352x557' ||
-            (layout.canvas.width >= 1000 && layout.controls?.width <= 280 &&
-              layout.shell.bottom <= layout.documentHeight + 1 &&
-              layout.canvas.width / (layout.canvas.width + layout.controls.width +
-                Math.max(0, layout.controls.left - layout.shell.right)) >= 0.75)) &&
+            (layout.canvas.width >= 620 && layout.controls?.width <= 280 &&
+              layout.shell.bottom <= viewport.height + 1 &&
+              layout.canvas.width / layout.canvas.height >= 1.32 &&
+              layout.canvas.width / layout.canvas.height <= 1.35)) &&
           (viewport.name !== 'desktop-1315x755' ||
             (layout.canvas.width >= 900 && layout.controls?.width <= 280 &&
-              layout.shell.bottom <= layout.documentHeight + 1 &&
-              layout.canvas.width / (layout.canvas.width + layout.controls.width +
-                Math.max(0, layout.controls.left - layout.shell.right)) >= 0.75)) &&
-          (!viewport.name.startsWith('desktop-') || layout.shell.bottom <= layout.documentHeight + 1) &&
+              layout.shell.bottom <= viewport.height + 1)) &&
+          (viewport.name !== 'desktop-dpr2-1920x1080' || layout.devicePixelRatio === 2) &&
+          (!viewport.name.startsWith('desktop-') && !viewport.name.startsWith('laptop-') &&
+            !viewport.name.startsWith('compact-laptop-') ||
+            (layout.shell.bottom <= viewport.height + 1 && layout.controls?.bottom <= viewport.height + 1 &&
+              layout.documentHeight <= viewport.height + 1)) &&
           (Math.abs(layout.canvas.width - layout.shell.width) < 2 &&
             Math.abs(layout.canvas.height - (layout.shell.height - 2)) < 2) &&
+          (Math.abs(layout.canvas.width - layout.mathOverlay?.width) < 2 &&
+            Math.abs(layout.canvas.height - layout.mathOverlay?.height) < 2) &&
+          (layout.mathOverlay?.vectorTextCount >= 6 && layout.mathOverlay?.protractorLabelCount >= 4 &&
+            layout.mathOverlay?.viewBox === '0 0 800 600' &&
+            (!viewport.name.startsWith('desktop-') && !viewport.name.startsWith('laptop-') &&
+              !viewport.name.startsWith('compact-laptop-') || layout.mathOverlay.titleVisible)) &&
+          (viewport.name !== 'laptop-1366x768' ||
+            (layout.protractorCheck.pointerEvents === 'none' &&
+              layout.protractorCheck.alpha > 0.99 &&
+              layout.protractorCheck.anchor?.length === 2 &&
+              layout.protractorCheck.player?.length === 2 &&
+              layout.protractorCheck.coordinateBackgroundX < 32 &&
+              layout.protractorCheck.eastTickX > 0 && layout.protractorCheck.northTickY < 0 &&
+              layout.mathOverlay.protractorLabelCount <= 8 &&
+              JSON.stringify(layout.protractorCheck.anchor) === JSON.stringify(layout.protractorCheck.player))) &&
           (!viewport.name.startsWith('desktop-') || layout.activeHeartsColor === 'rgb(197, 31, 53)') &&
           (!viewport.name.startsWith('tablet-') || layout.controls?.top >= layout.shell?.bottom - 1) &&
           (viewport.name !== 'phone-landscape-844x390' ||

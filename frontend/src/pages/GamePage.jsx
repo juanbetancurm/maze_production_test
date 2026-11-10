@@ -27,6 +27,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 import config from '../game/config.js';
+import MazeMathOverlay from '../game/visuals/MazeMathOverlay.jsx';
 import { normalizeProgressResponse } from '../context/progress.js';
 import { useGame } from '../context/useGame.js';
 import { completeLevel as saveCompletedLevel } from '../lib/api';
@@ -84,10 +85,10 @@ function getResponsiveGameScale(width, height) {
     const controlsWidth = Math.max(224, Math.min(280, width * 0.2));
     const pageContentWidth = Math.max(400, Math.min(width, 1800) - 32);
     maxCanvasWidth = Math.min(1200, pageContentWidth - controlsWidth - 16);
-    // Desktop prioritizes the available row width. On short windows, the whole
-    // 4:3 board remains in its shell and the document scrolls vertically instead
-    // of shrinking the maze and leaving unused horizontal space.
-    maxCanvasHeight = 900;
+    // Fit the full 4:3 board below the in-page brand header. Width and height
+    // both constrain the scale so ordinary laptop gameplay does not need page
+    // scrolling to see the maze boundaries.
+    maxCanvasHeight = Math.max(240, height - 62);
   }
 
   return Math.min(1.5, maxCanvasWidth / 800, maxCanvasHeight / 600);
@@ -110,6 +111,7 @@ export default function GamePage() {
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const gameRef    = useRef(null);
+  const mathOverlayRef = useRef(null);
   const distRef    = useRef(null);
   const degreesRef = useRef(null);
   const teamRef = useRef(team);
@@ -285,6 +287,7 @@ export default function GamePage() {
     // React.lazy only signals that the GamePage module loaded, which can precede
     // Phaser's asset loading and scene creation by a noticeable interval.
     gameRef.current._onSceneReady = () => setGameReady(true);
+    gameRef.current._onMathOverlayUpdate = (state) => mathOverlayRef.current?.sync(state);
 
     /**
      * _onReset(wasRestart) — called at the start of MazeScene.create()
@@ -707,12 +710,16 @@ export default function GamePage() {
               position: 'relative',
               width: '800px',
               height: '600px',
+              flex: '0 0 800px',
               transform: `scale(${gameScale})`,
               transformOrigin: 'top center',
               marginBottom: `${-(600 - gameViewportHeight)}px`,
             }}
           >
-            <div id="game-container" style={{ flexShrink: 0 }} />
+            <div id="game-container" style={{
+              position: 'absolute', inset: 0, width: '800px', height: '600px', zIndex: 1,
+            }} />
+            <MazeMathOverlay ref={mathOverlayRef} levelNumber={levelNumber} gameScale={gameScale} />
             <GameLoadingScreen
               variant="scene"
               className="maze-scene-loading"

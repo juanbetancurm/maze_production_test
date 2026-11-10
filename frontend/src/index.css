@@ -1867,6 +1867,25 @@ body:has(.maze-experience) {
   box-shadow: 0 0 0 4px #243f49, var(--craft-shadow-lg);
 }
 
+.maze-experience #game-container canvas {
+  display: block;
+  width: 800px;
+  height: 600px;
+}
+
+.maze-math-overlay {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 2;
+  display: block;
+  width: 800px;
+  height: 600px;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  text-rendering: geometricPrecision;
+}
+
 .maze-experience .maze-game-controls {
   flex: 0 0 clamp(224px, 20vw, 280px);
   gap: 8px;
@@ -2222,6 +2241,72 @@ body:has(.maze-experience) {
     padding-top: 6px;
     font-size: 1.3rem;
     letter-spacing: 3px;
+  }
+}
+
+@media (min-width: 1152px) and (max-height: 640px) {
+  .maze-game-header .maze-page-title {
+    font-size: 1.65rem;
+    line-height: 1;
+  }
+
+  .maze-brand-tagline {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .maze-current-level strong {
+    width: 32px;
+    height: 32px;
+  }
+
+  .maze-experience .maze-game-controls {
+    gap: 4px;
+  }
+
+  .maze-experience .maze-game-card {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .maze-experience .maze-input {
+    min-height: 36px;
+  }
+
+  .maze-experience :is(.maze-btn-forward, .maze-btn-turn,
+    .maze-btn-reset, .maze-protractor-toggle, .maze-inline-btn) {
+    min-height: 38px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .maze-experience .maze-btn-turn {
+    font-size: 0.78rem;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .maze-experience .maze-game-status {
+    padding: 5px 9px !important;
+  }
+
+  .maze-experience .maze-game-status-row {
+    padding: 1px 0;
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+
+  .maze-experience .maze-game-lives {
+    margin-top: 3px;
+    padding-top: 3px;
+    font-size: 1rem;
+    line-height: 1.1;
+    letter-spacing: 2px;
+  }
+
+  .maze-experience .maze-game-checkpoint {
+    margin-top: 3px;
+    font-size: 0.72rem;
   }
 }
 
