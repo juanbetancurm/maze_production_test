@@ -18,10 +18,13 @@ const selectedScenarios = process.env.ANGLEMAZE_SCENARIOS
 const activeSampleDuration = Math.max(1000, Number(process.env.ANGLEMAZE_ACTIVE_SAMPLE_MS) || 60000);
 const browserExecutable = process.env.ANGLEMAZE_BROWSER_PATH
   || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const browserNoSandbox = process.env.ANGLEMAZE_BROWSER_NO_SANDBOX === '1';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const trace = { startedAt: new Date().toISOString(), host: { platform: os.platform(), release: os.release(), node: process.version }, scenarios: [], limitations: [] };
 const apiRequests = [];
 const premiumAssetRequests = [];
+const fetchInterceptionErrors = [];
+let staleFetchInterceptions = 0;
 const teams = new Map();
 let nextTeam = 1;
 let chrome;
@@ -152,10 +155,12 @@ try {
   await vite.listen();
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'anglemaze-g00-'));
   trace.browserProfile = 'Temporary isolated profile (not an existing user profile)';
+  trace.browserSandbox = browserNoSandbox ? 'disabled for isolated local fixture' : 'default';
   const debugPort = await findFreePort();
   trace.debugPort = debugPort;
   chrome = spawn(browserExecutable, [
     '--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-sync', '--disable-extensions',
+    ...(browserNoSandbox ? ['--no-sandbox'] : []),
     '--enable-unsafe-swiftshader', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, '--window-size=1440,1000', 'about:blank',
   ], { windowsHide: true, stdio: 'ignore' });
   chrome.on('error', (error) => console.error(error));
@@ -180,14 +185,20 @@ try {
     const url = new URL(event.request.url);
     const allowed = ['data:', 'blob:', 'about:'].includes(url.protocol) || ['127.0.0.1', 'localhost'].includes(url.hostname);
     if (!allowed) trace.externalRequestsBlocked.push(event.request.url);
-    await cdp.send(allowed ? 'Fetch.continueRequest' : 'Fetch.failRequest', allowed ? { requestId: event.requestId } : { requestId: event.requestId, errorReason: 'BlockedByClient' });
+    try {
+      await cdp.send(allowed ? 'Fetch.continueRequest' : 'Fetch.failRequest', allowed
+        ? { requestId: event.requestId }
+        : { requestId: event.requestId, errorReason: 'BlockedByClient' });
+    } catch (error) {
+      if (error.message.includes('Invalid InterceptionId')) {
+        staleFetchInterceptions += 1;
+        return;
+      }
+      fetchInterceptionErrors.push(error.message);
+    }
   });
   await cdp.send('Page.enable'); await cdp.send('Runtime.enable'); await cdp.send('Network.enable');
-  if (!selectedScenarios) {
-    await cdp.send('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
-  } else {
-    trace.limitations.push('Filtered scenario run skips Fetch interception; all requested checks use the local fixture server.');
-  }
+  await cdp.send('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await scenario('level1-themed-inventory', async () => {
     const state = await fixture(1);
@@ -228,12 +239,14 @@ try {
       moving.visuals.playerWalkFrameCount !== 4 ||
       moving.visuals.playerWalkSourceSize?.width !== 384 ||
       moving.visuals.playerWalkSourceSize?.height !== 384 ||
-      !moving.visuals.playerWalkSource?.endsWith('/assets/premium/characters/player-walk-cycle-v2-2x.png') ||
+      !premiumAssetRequests.includes('/assets/premium/characters/player-walk-cycle-v2-2x.png') ||
       before.angle !== moving.angle || Math.abs(moving.playerFacingAngle - (90 - moving.angle)) > 0.01) {
       throw new Error(`Expected the approved overhead player walk cycle without changing the logical facing: ${JSON.stringify({
         accepted, before: { angle: before.angle, playerFacingAngle: before.playerFacingAngle, texture: before.playerTexture },
         moving: { angle: moving.angle, playerFacingAngle: moving.playerFacingAngle, texture: moving.playerTexture,
-          animation: moving.playerAnimation, playing: moving.playerAnimationPlaying, frameCount: moving.visuals.playerWalkFrameCount },
+          animation: moving.playerAnimation, playing: moving.playerAnimationPlaying,
+          frameCount: moving.visuals.playerWalkFrameCount, sourceSize: moving.visuals.playerWalkSourceSize,
+          requestedOptimizedAtlas: premiumAssetRequests.includes('/assets/premium/characters/player-walk-cycle-v2-2x.png') },
       })}`);
     }
     if (Math.hypot(moving.spriteX - moving.x, moving.spriteY - moving.y) > 0.5) {
@@ -287,6 +300,7 @@ try {
     const accepted = await cdp.evaluate('anglemazeBaseline.scene().goForward(150, () => {})');
     await sleep(150);
     const moving = await cdp.evaluate('anglemazeBaseline.snapshot()');
+    await shot('scene-player-topdown-motion-canvas');
     const idle = await waitForIdleScene();
     if (!accepted || before.visuals.light2DEnabled || moving.visuals.light2DEnabled ||
       moving.playerTexture !== 'premium.player.walk' || moving.playerAnimation !== 'anglemaze.player.walk' ||
@@ -317,6 +331,7 @@ try {
     return { before, turning, settled };
   });
   await scenario('level1-command-traces', async () => {
+    await fixture(1);
     const result = [];
     for (const distance of [10, 50, 100, 12.5]) {
       await cdp.evaluate('anglemazeBaseline.restart(1)');
@@ -351,11 +366,11 @@ try {
     const state = await fixture(2);
     const checkpointAssetRequests = premiumAssetRequests.slice(requestStart);
     await shot('scene-level2-desktop');
-    const grassSourcePath = state.visuals.grassTextureSource
-      ? new URL(state.visuals.grassTextureSource).pathname
-      : '';
-    if (!grassSourcePath.endsWith('/assets/premium/environment/grass-reference-v4.jpg')) {
-      throw new Error(`Expected runtime grass to use its optimized JPEG with aligned normal map: ${JSON.stringify({ grassSourcePath, visuals: state.visuals })}`);
+    const grassAssetPath = '/assets/premium/environment/grass-reference-v4.jpg';
+    const grassNormalPath = '/assets/premium/environment/grass-reference-v4-normal.png';
+    if (!checkpointAssetRequests.includes(grassAssetPath) || !checkpointAssetRequests.includes(grassNormalPath) ||
+        checkpointAssetRequests.includes('/assets/premium/environment/grass-reference-v4.png')) {
+      throw new Error(`Expected runtime grass to use its optimized JPEG and aligned normal map: ${JSON.stringify({ requests: checkpointAssetRequests, visuals: state.visuals })}`);
     }
     const activePath = '/assets/premium/objects/checkpoint-active-v3.webp';
     const claimedPath = '/assets/premium/objects/checkpoint-claimed-v3.webp';
@@ -562,6 +577,7 @@ try {
     return { start, approach, after };
   });
   await scenario('level2-enemy-stub-inventory', async () => {
+    await fixture(2);
     const inventory = await cdp.evaluate('anglemazeBaseline.collisionInventory()');
     const results = inventory.enemyHazards.map(({ source, bodies }) => {
       const golem = inventory.golemHitboxes.find((entry) =>
@@ -749,9 +765,17 @@ try {
       reducedMotionObjectsAdded: reducedAfter - reducedStart };
   });
   await scenario('twenty-restarts', async () => {
+    await fixture(2);
     const counts = [];
     for (let i = 0; i < 20; i += 1) { await cdp.evaluate('anglemazeBaseline.restart(2)'); await sleep(250); counts.push(await cdp.evaluate('anglemazeBaseline.resources()')); }
-    return counts;
+    const stableCounts = counts.map(({ displayObjects, staticBodies, dynamicBodies, textures, sceneListeners }) => ({
+      displayObjects, staticBodies, dynamicBodies, textures, sceneListeners,
+    }));
+    const baseline = JSON.stringify(stableCounts[0]);
+    if (stableCounts.some((countsAtRestart) => JSON.stringify(countsAtRestart) !== baseline)) {
+      throw new Error(`Display objects, physics bodies, textures, or listeners grew across 20 restarts: ${JSON.stringify(stableCounts)}`);
+    }
+    return { restarts: counts.length, stableCounts, resourcesStable: true };
   });
   await scenario('reduced-motion-policy', async () => {
     await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -775,7 +799,10 @@ try {
       normal: { enabled: normalState.reducedMotion, activeTweens: normalState.resources.activeTweens },
     };
   });
-  await scenario('level2-60second-frame-observation', () => cdp.evaluate('anglemazeBaseline.frameSample(60000)', 70000));
+  await scenario('level2-60second-frame-observation', async () => {
+    await fixture(2);
+    return cdp.evaluate('anglemazeBaseline.frameSample(60000)', 70000);
+  });
   await scenario('level2-active-movement-frame-observation', async () => {
     await fixture(2);
     const sample = await cdp.evaluate(`anglemazeBaseline.activeFrameSample(${activeSampleDuration})`, activeSampleDuration + 10000);
@@ -1063,6 +1090,10 @@ try {
     }
     return { before, enabled, afterTurn, afterRestart, disabled, canvasCount: await cdp.evaluate('document.querySelectorAll("canvas").length') };
   });
+  if (fetchInterceptionErrors.length) {
+    throw new Error(`Unexpected Fetch interception errors: ${JSON.stringify(fetchInterceptionErrors)}`);
+  }
+  trace.staleFetchInterceptions = staleFetchInterceptions;
   trace.limitations.push('Headless browser frame observation is not a real mobile/GPU performance benchmark.', 'Fixture placement is used to isolate hazards/checkpoint/exit; these are not recorded full-maze solutions.', 'The isolated scene does not own React move counters or persistence; React observations are reported separately.', 'Real-device coverage remains unmeasured in this run.');
   trace.finishedAt = new Date().toISOString();
 } catch (error) {
@@ -1072,6 +1103,7 @@ try {
 } finally {
   trace.apiRequests = apiRequests;
   trace.premiumAssetRequests = premiumAssetRequests;
+  trace.fetchInterceptionErrors = fetchInterceptionErrors;
   await fs.mkdir(output, { recursive: true });
   await fs.writeFile(path.join(output, 'runtime-trace.json'), JSON.stringify(trace, null, 2));
   if (cdp) { try { await cdp.send('Browser.close', {}, 3000); } catch {} cdp.ws.close(); }

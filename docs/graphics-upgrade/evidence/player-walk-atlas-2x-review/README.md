@@ -16,6 +16,6 @@ The runtime request is 88.1% smaller. Each displayed frame still has 2.67 source
 ## Validation status
 
 - Offline target-size visual comparison reviewed.
-- Graphics regression now checks the loaded atlas URL, 384 × 384 source dimensions, four frames, walk animation state, unchanged facing, and sprite/body alignment.
-- Fresh browser run against this atlas and a current in-game screenshot are still required. Existing walk-cycle captures use the original-resolution atlas and do not validate this export.
+- The actual-scene regression checks the requested optimized atlas URL, 384 × 384 source dimensions, four frames, walk animation state, unchanged facing, and sprite/body alignment. Both WebGL and Canvas captures show the optimized atlas in use; see [the current focused regression](../focused-regression-browserfix-v1/README.md).
+- The 33-scenario actual-scene regression passed in headless Chrome 157. Physical mobile/GPU review and owner art approval remain open.
 - Original source copy SHA-256: `A150285006AFC995B137965F5B9807F7C21C94D8FFECCB50BFAA1C84E2408D4E`.

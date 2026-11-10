@@ -20,7 +20,7 @@ Wait for the maze to appear, then open DevTools → Console. The fixture exposes
 
 ## Quick visual and behavior checks
 
-**Current supplied-art pass:** the wall renderer uses one stamp per segment, consistent 28 px target thickness, a 2x static Phaser RenderTexture, and no corner overlay. Axis-aligned frames encode the lower-right view consistently; diagonal frames flip across their thickness axis when their bevel would face away from the lower-right screen projection. Segment endpoints, target thickness, and wall physics are unchanged. The source boards already contain bevels and shadows, so a second corner sprite stacked those shadows and made joins too dark. wallJunctionCount remains zero. Inspect joins at straight, right-angle, diagonal, and reversed-endpoint connections. The checkpoints use alpha-trimmed, transparent gold-save and green-claimed badges; their original 30-by-30 trigger rectangles remain unchanged.
+**Current supplied-art pass:** the wall renderer uses one stamp per segment, consistent 28 px target thickness, a 2x static Phaser RenderTexture, and a supplied end-grain join cap only at detected non-collinear joins. Axis-aligned frames encode the lower-right view consistently; diagonal frames flip across their thickness axis when their bevel would face away from the lower-right screen projection. Segment endpoints, target thickness, and wall physics are unchanged. The source boards already contain bevels and shadows, so a second corner sprite stacked those shadows and made joins too dark. The themed Level 1 and Level 2 scenes report 12 and 33 rendered join caps respectively; fallback mode may report zero. Inspect joins at straight, right-angle, diagonal, and reversed-endpoint connections. The checkpoints use alpha-trimmed, transparent gold-save and green-claimed badges; their original 30-by-30 trigger rectangles remain unchanged.
 
 The player and golem use sprite-alpha-derived convex footprints for physical golem collisions. The player image is measured at its rendered size and rotated with the sprite; the static golem footprint excludes decorative green foliage and does not rotate with visual facing. A continuous swept SAT check catches contact between frames. There is no awareness radius. The existing 20-by-20 player Arcade body and wall Arcade bodies remain authoritative for maze walls; the debug overlay shows them separately from character footprints.
 
@@ -38,6 +38,27 @@ The player and golem use sprite-alpha-derived convex footprints for physical gol
 ## Reduced motion
 
 Enable the operating-system reduced-motion preference, reload the fixture, and repeat steps 3–6. Idle breathing, turn/impact/settle squash, golem breathing, exit pulse, and camera shake should be absent. Mathematical orientation, movement, collision, exit activation, and static proximity feedback should remain.
+
+## Automated regression and production asset gate
+
+The current browser run is split into four evidence batches covering all 33 scenarios. From PowerShell, run the full suite in a temporary isolated Chrome profile:
+
+```powershell
+cd C:\repos\anglemaze-platform\frontend
+$env:ANGLEMAZE_BROWSER_NO_SANDBOX = '1'
+node tests/graphics/run-baseline.mjs
+Remove-Item Env:ANGLEMAZE_BROWSER_NO_SANDBOX
+```
+
+The no-sandbox flag is a local workaround for this workstation's headless Chrome `Page.enable` hang; it applies only to the test browser, not production. The harness intercepts all requests and blocks non-local origins. Set `ANGLEMAZE_EVIDENCE_DIR` to a new evidence folder before running if you need to retain the trace without replacing the default baseline folder. The existing successful batches and screenshots are in [current regression evidence](evidence/focused-regression-browserfix-v1/README.md).
+
+The production build also runs the asset inventory and size gate automatically:
+
+```powershell
+npm.cmd run build
+```
+
+It verifies that manifest paths exist in `dist`, only the 11 intended premium images are shipped, each image stays under its individual cap, the walk atlas remains 384×384, and the combined premium-image payload stays below 8,000,000 bytes.
 
 ## Report back
 

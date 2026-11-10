@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node tests/graphics/check-asset-bundle.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

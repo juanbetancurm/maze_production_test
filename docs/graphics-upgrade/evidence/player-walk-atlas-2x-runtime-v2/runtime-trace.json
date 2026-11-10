@@ -1,0 +1,56 @@
+{
+  "startedAt": "2026-11-10T01:21:36.670Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [
+    "Filtered scenario run skips Fetch interception; all requested checks use the local fixture server."
+  ],
+  "head": "c47f6e292240445b9e6b47760e026b6a268d2fea",
+  "trackedDiffBefore": "docs/graphics-upgrade/README.md\ndocs/graphics-upgrade/evidence/asset-payload-cleanup-v1/README.md\nfrontend/package.json\nfrontend/tests/graphics/run-baseline.mjs",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "browserSandbox": "disabled for isolated local fixture",
+  "debugPort": 53713,
+  "browser": {
+    "Browser": "Chrome/157.0.8103.39",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "V8-Version": "15.7.112.23",
+    "WebKit-Version": "537.36 (@9a31f0acec1854d44e49a73fbf8017598151a583)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:53713/devtools/browser/8df2b48a-efe2-47e8-9945-ff9312436ee7"
+  },
+  "browserTargets": [
+    {
+      "id": "C333ECDB24D1D98C27F061A7D5694772",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    },
+    {
+      "id": "B653287FDE353076970DB6144C64A7BB",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: Expected the approved overhead player walk cycle without changing the logical facing: {\"accepted\":true,\"before\":{\"angle\":0,\"playerFacingAngle\":6.266608784822552,\"texture\":\"player\"},\"moving\":{\"angle\":0,\"playerFacingAngle\":90,\"texture\":\"premium.player.walk\",\"animation\":\"anglemaze.player.walk\",\"playing\":true,\"frameCount\":4,\"sourceSize\":{\"width\":384,\"height\":384},\"source\":\"blob:http://127.0.0.1:4178/54cdd05c-e28e-491f-8e68-c5ec622c3f65\"}}\n    at file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:236:13\n    at async scenario (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:140:18)\n    at async file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:213:3",
+  "apiRequests": [],
+  "premiumAssetRequests": [
+    "/assets/premium/environment/grass-reference-v4-normal.png",
+    "/assets/premium/environment/grass-reference-v4.jpg",
+    "/assets/premium/environment/walls-reference-kit.png",
+    "/assets/premium/environment/wall-join-v1.png",
+    "/assets/premium/characters/player-normal.png",
+    "/assets/premium/characters/player-topdown-v2.png",
+    "/assets/premium/characters/player-walk-cycle-v2-2x.png",
+    "/assets/premium/objects/exit-base-v1.png",
+    "/assets/premium/objects/checkpoint-active-v3.webp",
+    "/assets/premium/objects/checkpoint-claimed-v3.webp"
+  ]
+}

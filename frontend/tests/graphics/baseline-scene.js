@@ -99,8 +99,6 @@ function snapshot() {
     reducedMotion: Boolean(s._reducedMotion),
     visuals: {
       grassTexture: VISUAL_TEXTURES.grass,
-      grassTextureSource: grassTexture?.source?.[0]?.image?.currentSrc ??
-        grassTexture?.source?.[0]?.image?.src ?? null,
       wallTexture: VISUAL_TEXTURES.wallKit,
       wallJoinTextureLoaded: game.textures.exists(VISUAL_TEXTURES.wallJoin),
       playerTexture: s.playerSprite.texture?.key ?? null,
@@ -111,8 +109,6 @@ function snapshot() {
       playerWalkSourceSize: playerWalkTexture?.source?.[0]
         ? { width: playerWalkTexture.source[0].width, height: playerWalkTexture.source[0].height }
         : null,
-      playerWalkSource: playerWalkTexture?.source?.[0]?.image?.currentSrc ??
-        playerWalkTexture?.source?.[0]?.image?.src ?? null,
       light2DEnabled: Boolean(s._premiumLightingEnabled),
       light2DObjectCount: s.children.list.filter(object => object.pipeline?.name === 'Light2D').length,
       normalMappedTextures: Object.values(VISUAL_TEXTURES)
