@@ -45,8 +45,8 @@ import {
   areVisualAssetsLoaded,
   applyVisualAssetFiltering,
   enablePremiumLighting,
-  prepareCheckpointTextures,
   prepareGolemEyeGlowTexture,
+  releaseGolemVisualTextures,
   VISUAL_TEXTURES,
 } from '../visuals/assetManifest.js';
 
@@ -365,8 +365,10 @@ export default class MazeScene extends Phaser.Scene {
     //   we fall back to the original flat-color rendering.
     //   Every themed rendering function checks this flag.
     this._themed = isThemeLoaded(this);
-    prepareCheckpointTextures(this);
-    prepareGolemEyeGlowTexture(this);
+    const selectedLevelForAssets = this.game._currentLevel ??
+      (typeof window !== 'undefined' ? Number(window.__anglemazeInitialLevel) : undefined);
+    if (selectedLevelForAssets === 2) prepareGolemEyeGlowTexture(this);
+    else if (selectedLevelForAssets === 1) releaseGolemVisualTextures(this);
     applyVisualAssetFiltering(this);
     this._premiumLightingEnabled = enablePremiumLighting(this);
     const hasReferenceCheckpointArt = this.textures.exists(VISUAL_TEXTURES.checkpointActive) &&

@@ -1,0 +1,60 @@
+{
+  "startedAt": "2026-11-07T17:57:29.238Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [],
+  "head": "cfbef8e821b80a4d55e754702d01ecb56b13fda7",
+  "trackedDiffBefore": "docs/graphics-upgrade/06-development-backlog.md\ndocs/graphics-upgrade/README.md\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/game/visuals/assetManifest.js\nfrontend/src/pages/GamePage.jsx\nfrontend/tests/graphics/baseline-scene.js\nfrontend/tests/graphics/run-baseline.mjs",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 57920,
+  "browser": {
+    "Browser": "Edg/157.0.4341.42",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+    "V8-Version": "15.7.11.4",
+    "WebKit-Version": "537.36 (@7b1486be4607d53d9f93841b7c776bc525ca74b7)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:57920/devtools/browser/4deb990f-1733-4823-8116-9b6cf561b066"
+  },
+  "browserTargets": [
+    {
+      "id": "B3D922630AF22CC9FBAD8DAAAADF0407",
+      "type": "background_page",
+      "title": "Microsoft Voices",
+      "url": "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold/_generated_background_page.html"
+    },
+    {
+      "id": "96BE67A4375B56BBFDE44DF9D59CFA75",
+      "type": "background_page",
+      "title": "WebRTC Internals Extension",
+      "url": "chrome-extension://ncbjelpjchkpbikbpkcchkhkblodoama/_generated_background_page.html"
+    },
+    {
+      "id": "8F939948A1D40185BA186BC36B164FB3",
+      "type": "background_page",
+      "title": "Media Internals Services Extension",
+      "url": "chrome-extension://fikbjbembnmfhppjfnmfkahdhfohhjmg/_generated_background_page.html"
+    },
+    {
+      "id": "F0CB9EEDB95B9036A61FB1BBC5255256",
+      "type": "background_page",
+      "title": "Edge Feedback",
+      "url": "chrome-extension://ihmafllikibpmigkcoadcmckbfhibefp/_generated_background_page.html"
+    },
+    {
+      "id": "9198E800DC528A5A20F946AE4AFC58FB",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: CDP timeout: Page.enable\n    at Timeout._onTimeout (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:83:135)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)",
+  "apiRequests": [],
+  "premiumAssetRequests": []
+}

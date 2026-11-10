@@ -15,7 +15,6 @@ export const VISUAL_TEXTURES = Object.freeze({
   golem: 'premium.golem.static',
   golemEyeGlow: 'premium.golem.eye-glow',
   exit: 'premium.exit.base',
-  checkpointSheet: 'premium.checkpoint.sheet',
   checkpointActive: 'premium.checkpoint.active',
   checkpointClaimed: 'premium.checkpoint.claimed',
 });
@@ -23,7 +22,7 @@ export const VISUAL_TEXTURES = Object.freeze({
 const VISUAL_ASSETS = Object.freeze({
   grass: {
     key: VISUAL_TEXTURES.grass,
-    path: '/assets/premium/environment/grass-reference-v4.png',
+    path: '/assets/premium/environment/grass-reference-v4.jpg',
     normalMapPath: '/assets/premium/environment/grass-reference-v4-normal.png',
   },
   wallKit: {
@@ -41,8 +40,8 @@ const VISUAL_ASSETS = Object.freeze({
   },
   playerWalk: {
     key: VISUAL_TEXTURES.playerWalk,
-    path: '/assets/premium/characters/player-walk-cycle-v2.png',
-    spriteSheet: { frameWidth: 627, frameHeight: 627 },
+    path: '/assets/premium/characters/player-walk-cycle-v2-2x.png',
+    spriteSheet: { frameWidth: 192, frameHeight: 192 },
   },
   golem: {
     key: VISUAL_TEXTURES.golem,
@@ -52,9 +51,13 @@ const VISUAL_ASSETS = Object.freeze({
     key: VISUAL_TEXTURES.exit,
     path: '/assets/premium/objects/exit-base-v1.png',
   },
-  checkpointSheet: {
-    key: VISUAL_TEXTURES.checkpointSheet,
-    path: '/assets/premium/objects/checkpoint-badges-v2.png',
+  checkpointActive: {
+    key: VISUAL_TEXTURES.checkpointActive,
+    path: '/assets/premium/objects/checkpoint-active-v3.webp',
+  },
+  checkpointClaimed: {
+    key: VISUAL_TEXTURES.checkpointClaimed,
+    path: '/assets/premium/objects/checkpoint-claimed-v3.webp',
   },
 });
 
@@ -62,7 +65,7 @@ export const VISUAL_ASSET_GROUPS = Object.freeze({
   environment: Object.freeze(['grass', 'wallKit', 'wallJoin']),
   actors: Object.freeze(['player', 'playerWalk', 'golem']),
   objective: Object.freeze(['exit']),
-  checkpoints: Object.freeze(['checkpointSheet']),
+  checkpoints: Object.freeze(['checkpointActive', 'checkpointClaimed']),
 });
 
 const NORMAL_MAPPED_TEXTURE_KEYS = new Set(
@@ -87,7 +90,14 @@ export function preloadImageWithNormalMap(scene, key, path, normalMapPath) {
 
 /** Queue optional art without making a missing premium image fatal. */
 export function preloadVisualAssets(scene) {
+  const selectedLevel = scene.game?._currentLevel ??
+    (typeof window !== 'undefined' ? Number(window.__anglemazeInitialLevel) : undefined);
+
   for (const asset of Object.values(VISUAL_ASSETS)) {
+    if (asset.key === VISUAL_TEXTURES.golem && selectedLevel === 1) {
+      // Level 1 has no golems; defer this 1 MB texture until Level 2 is selected.
+      continue;
+    }
     if (asset.spriteSheet) {
       if (!scene.textures.exists(asset.key)) {
         scene.load.spritesheet(asset.key, asset.path, asset.spriteSheet);
@@ -176,68 +186,16 @@ export function prepareGolemEyeGlowTexture(scene) {
   return scene.textures.exists(glowKey);
 }
 
-/**
- * Crop the high-resolution transparent checkpoint sheet into its two badges.
- * Alpha-bound trimming retains the generated soft edge and removes all empty
- * presentation space without a color key or pale background halo.
- */
-export function prepareCheckpointTextures(scene) {
-  const { checkpointSheet, checkpointActive, checkpointClaimed } = VISUAL_TEXTURES;
-  if (!scene.textures.exists(checkpointSheet) || typeof document === 'undefined') return false;
-
-  const source = scene.textures.get(checkpointSheet)?.source?.[0]?.image;
-  if (!source) return false;
-
-  const sourceWidth = source.naturalWidth ?? source.width;
-  const sourceHeight = source.naturalHeight ?? source.height;
-  const halfWidth = Math.floor(sourceWidth / 2);
-  const crops = [
-    { key: checkpointActive, x: 0, width: halfWidth },
-    { key: checkpointClaimed, x: halfWidth, width: sourceWidth - halfWidth },
-  ];
-
-  for (const crop of crops) {
-    if (scene.textures.exists(crop.key)) continue;
-
-    const scan = document.createElement('canvas');
-    scan.width = crop.width;
-    scan.height = sourceHeight;
-    const scanContext = scan.getContext('2d', { willReadFrequently: true });
-    if (!scanContext) return false;
-    scanContext.drawImage(source, crop.x, 0, crop.width, sourceHeight, 0, 0, crop.width, sourceHeight);
-
-    const pixels = scanContext.getImageData(0, 0, crop.width, sourceHeight).data;
-    let minX = crop.width;
-    let minY = sourceHeight;
-    let maxX = -1;
-    let maxY = -1;
-    for (let y = 0; y < sourceHeight; y += 1) {
-      for (let x = 0; x < crop.width; x += 1) {
-        if (pixels[(y * crop.width + x) * 4 + 3] < 8) continue;
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-    if (maxX < minX || maxY < minY) return false;
-
-    const padding = 8;
-    const left = Math.max(0, minX - padding);
-    const top = Math.max(0, minY - padding);
-    const width = Math.min(crop.width - left, maxX - minX + padding * 2 + 1);
-    const height = Math.min(sourceHeight - top, maxY - minY + padding * 2 + 1);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) return false;
-    context.imageSmoothingEnabled = true;
-    context.drawImage(scan, left, top, width, height, 0, 0, width, height);
-    scene.textures.addCanvas(crop.key, canvas);
+/** Release golem-only textures when the current level has no golems. */
+export function releaseGolemVisualTextures(scene) {
+  const keys = [VISUAL_TEXTURES.golemEyeGlow, VISUAL_TEXTURES.golem];
+  for (const key of keys) {
+    if (!scene.textures.exists(key)) continue;
+    const inUse = scene.children.list.some((child) => child.active && child.texture?.key === key);
+    if (inUse) return false;
+    scene.textures.remove(key);
   }
-
-  return scene.textures.exists(checkpointActive) && scene.textures.exists(checkpointClaimed);
+  return true;
 }
 
 /** Apply Light2D only to loaded assets that have a paired normal map. */

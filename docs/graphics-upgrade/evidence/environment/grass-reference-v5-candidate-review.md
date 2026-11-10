@@ -13,6 +13,6 @@ Measurements are mean absolute RGB differences between paired opposite edge pixe
 
 ## Current runtime decision
 
-Keep `grass-reference-v4.png` and its aligned normal map active. Set the world tile scale to 800 so the fixed 800×600 playfield shows one detailed texture across its width and does not expose the former 512-unit repeat grid. The approved art style and WebGL lighting remain intact. Since the source texture still has imperfect borders, a wider world or camera zoom-out would expose repetition; G02 still needs a production-approved seamless tile before those conditions are supported.
+Keep the approved v4 art and its aligned normal map. Runtime now uses its q96 `grass-reference-v4.jpg` color export; the original PNG master is preserved in the graphics-upgrade source archive outside the public asset directory. The world tile scale remains 800 so the fixed 800×600 playfield shows one detailed texture across its width and does not expose the former 512-unit repeat grid. The approved art style and WebGL lighting remain intact. Since the source texture still has imperfect borders, a wider world or camera zoom-out would expose repetition; G02 still needs a production-approved seamless tile before those conditions are supported.
 
 The actual Level 1, Level 2, and emulated phone captures at this scale are in [the runtime review](../grass-v4-worldscale-review/). The run used headless Chrome 156 and completed the three selected inventory/layout scenarios with no browser errors. The phone capture is viewport emulation, not a physical-device test.

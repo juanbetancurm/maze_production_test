@@ -1,0 +1,42 @@
+{
+  "startedAt": "2026-11-10T00:12:10.165Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "node": "v24.18.0"
+  },
+  "scenarios": [],
+  "limitations": [],
+  "head": "cfbef8e821b80a4d55e754702d01ecb56b13fda7",
+  "trackedDiffBefore": "docs/graphics-upgrade/06-development-backlog.md\ndocs/graphics-upgrade/README.md\ndocs/graphics-upgrade/evidence/environment/grass-reference-v5-candidate-review.md\ndocs/graphics-upgrade/evidence/grass-v4-worldscale-review/README.md\ndocs/graphics-upgrade/evidence/player-walk-cycle-review-v2/README.md\nfrontend/public/assets/premium/characters/player-walk-cycle-v2.png\nfrontend/public/assets/premium/environment/grass-reference-v4.png\nfrontend/src/game/scenes/MazeScene.js\nfrontend/src/game/visuals/assetManifest.js\nfrontend/src/pages/GamePage.jsx\nfrontend/tests/graphics/baseline-scene.js\nfrontend/tests/graphics/run-baseline.mjs",
+  "browserProfile": "Temporary isolated profile (not an existing user profile)",
+  "debugPort": 65254,
+  "browser": {
+    "Browser": "Chrome/157.0.8103.39",
+    "File-Path-Style": "windows",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "V8-Version": "15.7.112.23",
+    "WebKit-Version": "537.36 (@9a31f0acec1854d44e49a73fbf8017598151a583)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:65254/devtools/browser/49d4b011-049a-489b-bc23-4a19cd685390"
+  },
+  "browserTargets": [
+    {
+      "id": "FD0AA3776A9649E887D704DA8E2A95A9",
+      "type": "page",
+      "title": "",
+      "url": "about:blank"
+    },
+    {
+      "id": "E7FBDBB90EDF6A9C2E55427BD7ED1FBF",
+      "type": "browser_ui",
+      "title": "",
+      "url": "chrome://omnibox-popup.top-chrome/"
+    }
+  ],
+  "externalRequestsBlocked": [],
+  "browserErrors": [],
+  "failure": "Error: CDP timeout: Page.enable\n    at Timeout._onTimeout (file:///C:/repos/anglemaze-platform/frontend/tests/graphics/run-baseline.mjs:83:135)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)",
+  "apiRequests": [],
+  "premiumAssetRequests": []
+}

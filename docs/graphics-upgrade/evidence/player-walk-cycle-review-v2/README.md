@@ -16,3 +16,7 @@ This is generated candidate art for the memorial protagonist. Owner review of th
 ## Capture
 
 ![AngleMaze scene using the v2 walk atlas](scene-player-walk-cycle-v2.png)
+
+## Runtime resolution update
+
+The runtime atlas was subsequently reduced to `player-walk-cycle-v2-2x.png`: four 192 × 192 frames in a 384 × 384 transparent PNG. It renders at 72 × 68 world pixels, retaining at least 2.67 source pixels per displayed horizontal pixel and 2.82 vertically. The original 1254 × 1254 atlas is preserved at `docs/graphics-upgrade/source-assets/player-walk-cycle-v2-original.png`. See [the 2x atlas size review](../player-walk-atlas-2x-review/README.md) for the visual comparison and byte counts. The browser runtime still needs a fresh capture against the reduced atlas.

@@ -50,6 +50,9 @@ function snapshot() {
   const grassTexture = game.textures.exists(VISUAL_TEXTURES.grass)
     ? game.textures.get(VISUAL_TEXTURES.grass)
     : null;
+  const playerWalkTexture = game.textures.exists(VISUAL_TEXTURES.playerWalk)
+    ? game.textures.get(VISUAL_TEXTURES.playerWalk)
+    : null;
   return {
     level: game._currentLevel, themed: s._themed, angle: s.facingAngle,
     x: s.player.x, y: s.player.y,
@@ -96,13 +99,20 @@ function snapshot() {
     reducedMotion: Boolean(s._reducedMotion),
     visuals: {
       grassTexture: VISUAL_TEXTURES.grass,
+      grassTextureSource: grassTexture?.source?.[0]?.image?.currentSrc ??
+        grassTexture?.source?.[0]?.image?.src ?? null,
       wallTexture: VISUAL_TEXTURES.wallKit,
       wallJoinTextureLoaded: game.textures.exists(VISUAL_TEXTURES.wallJoin),
       playerTexture: s.playerSprite.texture?.key ?? null,
       playerWalkFrameCount: game.textures.exists(VISUAL_TEXTURES.playerWalk)
-        ? Object.keys(game.textures.get(VISUAL_TEXTURES.playerWalk).frames)
+        ? Object.keys(playerWalkTexture.frames)
           .filter((name) => name !== '__BASE').length
         : 0,
+      playerWalkSourceSize: playerWalkTexture?.source?.[0]
+        ? { width: playerWalkTexture.source[0].width, height: playerWalkTexture.source[0].height }
+        : null,
+      playerWalkSource: playerWalkTexture?.source?.[0]?.image?.currentSrc ??
+        playerWalkTexture?.source?.[0]?.image?.src ?? null,
       light2DEnabled: Boolean(s._premiumLightingEnabled),
       light2DObjectCount: s.children.list.filter(object => object.pipeline?.name === 'Light2D').length,
       normalMappedTextures: Object.values(VISUAL_TEXTURES)
@@ -131,12 +141,24 @@ function snapshot() {
         .filter(key => game.textures.exists(key))
         .map((key) => {
           const image = game.textures.get(key)?.source?.[0]?.image;
-          if (!image?.getContext) return { key, width: image?.width ?? 0, height: image?.height ?? 0 };
+          if (!image) return { key, width: 0, height: 0, alphaCorner: null, source: null };
+          let alphaCorner = null;
+          if (image.getContext) {
+            alphaCorner = image.getContext('2d').getImageData(0, 0, 1, 1).data[3];
+          } else {
+            const probe = document.createElement('canvas');
+            probe.width = 1;
+            probe.height = 1;
+            const context = probe.getContext('2d', { willReadFrequently: true });
+            context.drawImage(image, 0, 0, 1, 1, 0, 0, 1, 1);
+            alphaCorner = context.getImageData(0, 0, 1, 1).data[3];
+          }
           return {
             key,
-            width: image.width,
-            height: image.height,
-            alphaCorner: image.getContext('2d').getImageData(0, 0, 1, 1).data[3],
+            width: image.naturalWidth ?? image.width,
+            height: image.naturalHeight ?? image.height,
+            alphaCorner,
+            source: image.currentSrc ?? image.src ?? null,
           };
         }),
       checkpointStates: Object.values(s._checkpointSprites ?? {})
@@ -145,6 +167,7 @@ function snapshot() {
       golemShadowCount: s.golemView?.shadowCount ?? 0,
       golemEyeGlowTextureLoaded: game.textures.exists(VISUAL_TEXTURES.golemEyeGlow),
       golemEyeGlowCount: s.golemView?.eyeGlowCount ?? 0,
+      golemTextureLoaded: game.textures.exists(VISUAL_TEXTURES.golem),
       golemHitboxCount: s.golemCollisionShapes?.length ?? 0,
       golemCollisionShapeCount: s.golemCollisionShapes?.length ?? 0,
       golemAlphaFootprint: s.golemAlphaFootprint,

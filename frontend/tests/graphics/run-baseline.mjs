@@ -21,6 +21,7 @@ const browserExecutable = process.env.ANGLEMAZE_BROWSER_PATH
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const trace = { startedAt: new Date().toISOString(), host: { platform: os.platform(), release: os.release(), node: process.version }, scenarios: [], limitations: [] };
 const apiRequests = [];
+const premiumAssetRequests = [];
 const teams = new Map();
 let nextTeam = 1;
 let chrome;
@@ -171,6 +172,10 @@ try {
   trace.externalRequestsBlocked = [];
   trace.browserErrors = [];
   cdp.on('Runtime.exceptionThrown', (event) => trace.browserErrors.push(event.exceptionDetails.exception?.description ?? event.exceptionDetails.text));
+  cdp.on('Network.requestWillBeSent', ({ request }) => {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/assets/premium/')) premiumAssetRequests.push(url.pathname);
+  });
   cdp.on('Fetch.requestPaused', async (event) => {
     const url = new URL(event.request.url);
     const allowed = ['data:', 'blob:', 'about:'].includes(url.protocol) || ['127.0.0.1', 'localhost'].includes(url.hostname);
@@ -221,6 +226,9 @@ try {
       moving.playerTexture !== 'premium.player.walk' ||
       moving.playerAnimation !== 'anglemaze.player.walk' || !moving.playerAnimationPlaying ||
       moving.visuals.playerWalkFrameCount !== 4 ||
+      moving.visuals.playerWalkSourceSize?.width !== 384 ||
+      moving.visuals.playerWalkSourceSize?.height !== 384 ||
+      !moving.visuals.playerWalkSource?.endsWith('/assets/premium/characters/player-walk-cycle-v2-2x.png') ||
       before.angle !== moving.angle || Math.abs(moving.playerFacingAngle - (90 - moving.angle)) > 0.01) {
       throw new Error(`Expected the approved overhead player walk cycle without changing the logical facing: ${JSON.stringify({
         accepted, before: { angle: before.angle, playerFacingAngle: before.playerFacingAngle, texture: before.playerTexture },
@@ -339,8 +347,18 @@ try {
     return { result, afterRespawn: await cdp.evaluate('anglemazeBaseline.snapshot()') };
   });
   await scenario('level2-themed-inventory', async () => {
+    const requestStart = premiumAssetRequests.length;
     const state = await fixture(2);
+    const checkpointAssetRequests = premiumAssetRequests.slice(requestStart);
     await shot('scene-level2-desktop');
+    const grassSourcePath = state.visuals.grassTextureSource
+      ? new URL(state.visuals.grassTextureSource).pathname
+      : '';
+    if (!grassSourcePath.endsWith('/assets/premium/environment/grass-reference-v4.jpg')) {
+      throw new Error(`Expected runtime grass to use its optimized JPEG with aligned normal map: ${JSON.stringify({ grassSourcePath, visuals: state.visuals })}`);
+    }
+    const activePath = '/assets/premium/objects/checkpoint-active-v3.webp';
+    const claimedPath = '/assets/premium/objects/checkpoint-claimed-v3.webp';
     const diagonalWallTexture = state.visuals.wallKitTextureSources
       .find(({ key }) => key.endsWith('.diagonal.horizontal'));
     if (state.visuals.golemCount !== 4 || state.visuals.golemShadowCount !== 4 ||
@@ -356,10 +374,65 @@ try {
         state.visuals.checkpointStates.length !== 4 ||
         state.visuals.checkpointTextureInfo.length !== 2 ||
         state.visuals.checkpointTextureInfo.some(({ width, height, alphaCorner }) =>
-          width < 400 || height < 500 || alphaCorner !== 0)) {
+          width < 400 || height < 500 || alphaCorner !== 0) ||
+        !checkpointAssetRequests.includes(activePath) || !checkpointAssetRequests.includes(claimedPath) ||
+        checkpointAssetRequests.includes('/assets/premium/objects/checkpoint-badges-v2.png')) {
       throw new Error(`Expected high-resolution transparent checkpoint badges, consistent walls, and four solid golems: ${JSON.stringify(state.visuals)}`);
     }
-    return { state, inventory: await cdp.evaluate('anglemazeBaseline.collisionInventory()') };
+    const afterRestart = await cdp.evaluate('anglemazeBaseline.restart(2)');
+    if (afterRestart.visuals.checkpointStateTextures.length !== 2 ||
+        afterRestart.visuals.checkpointTextureInfo.some(({ width, height, alphaCorner }) =>
+          width < 400 || height < 500 || alphaCorner !== 0)) {
+      throw new Error(`Checkpoint WebP textures should survive restart with their dimensions and transparency intact: ${JSON.stringify(afterRestart.visuals.checkpointTextureInfo)}`);
+    }
+    return { state, afterRestart, checkpointAssetRequests,
+      inventory: await cdp.evaluate('anglemazeBaseline.collisionInventory()') };
+  });
+  await scenario('level-specific-golem-assets', async () => {
+    const requestStart = premiumAssetRequests.length;
+    const level1 = await fixture(1);
+    const level1Requests = premiumAssetRequests.slice(requestStart);
+    if (level1.visuals.golemTextureLoaded || level1.visuals.golemEyeGlowTextureLoaded ||
+        level1.visuals.golemCount !== 0) {
+      throw new Error(`Level 1 should not load or create unused golem visuals: ${JSON.stringify(level1.visuals)}`);
+    }
+    const golemPath = '/assets/premium/characters/golem-static-v2.png';
+    if (level1Requests.includes(golemPath)) {
+      throw new Error(`Level 1 downloaded the Level 2-only golem PNG: ${JSON.stringify(level1Requests)}`);
+    }
+
+    const level2 = await cdp.evaluate('anglemazeBaseline.restart(2)');
+    const level2RequestedGolem = premiumAssetRequests.slice(requestStart).includes(golemPath);
+    if (!level2.visuals.golemTextureLoaded || !level2.visuals.golemEyeGlowTextureLoaded ||
+        level2.visuals.golemCount !== 4 || level2.visuals.golemHitboxCount !== 4 || !level2RequestedGolem) {
+      throw new Error(`Level 2 should load its four golem visuals and preserve collision bodies: ${JSON.stringify(level2.visuals)}`);
+    }
+
+    const returnedToLevel1 = await cdp.evaluate('anglemazeBaseline.restart(1)');
+    if (returnedToLevel1.visuals.golemTextureLoaded || returnedToLevel1.visuals.golemEyeGlowTextureLoaded ||
+        returnedToLevel1.visuals.golemCount !== 0 || returnedToLevel1.visuals.golemHitboxCount !== 0) {
+      throw new Error(`Returning to Level 1 should release golem-only visual textures and keep its empty enemy set: ${JSON.stringify(returnedToLevel1.visuals)}`);
+    }
+    return {
+      level1: {
+        golemTextureLoaded: level1.visuals.golemTextureLoaded,
+        eyeGlowTextureLoaded: level1.visuals.golemEyeGlowTextureLoaded,
+        golemAssetRequested: level1Requests.includes(golemPath),
+      },
+      level2: {
+        golemTextureLoaded: level2.visuals.golemTextureLoaded,
+        eyeGlowTextureLoaded: level2.visuals.golemEyeGlowTextureLoaded,
+        golemAssetRequested: level2RequestedGolem,
+        golemCount: level2.visuals.golemCount,
+        collisionBodies: level2.visuals.golemHitboxCount,
+      },
+      returnedToLevel1: {
+        golemTextureLoaded: returnedToLevel1.visuals.golemTextureLoaded,
+        eyeGlowTextureLoaded: returnedToLevel1.visuals.golemEyeGlowTextureLoaded,
+        golemCount: returnedToLevel1.visuals.golemCount,
+        collisionBodies: returnedToLevel1.visuals.golemHitboxCount,
+      },
+    };
   });
   await scenario('level2-golem-weighted-idle', async () => {
     await fixture(2);
@@ -998,6 +1071,7 @@ try {
   process.exitCode = 1;
 } finally {
   trace.apiRequests = apiRequests;
+  trace.premiumAssetRequests = premiumAssetRequests;
   await fs.mkdir(output, { recursive: true });
   await fs.writeFile(path.join(output, 'runtime-trace.json'), JSON.stringify(trace, null, 2));
   if (cdp) { try { await cdp.send('Browser.close', {}, 3000); } catch {} cdp.ws.close(); }

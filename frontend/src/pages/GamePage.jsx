@@ -233,6 +233,9 @@ export default function GamePage() {
   useEffect(() => {
     if (gameRef.current !== null) return; // React 18 StrictMode double-mount guard
 
+    // Make the selected level available to Phaser preload before its first
+    // scene starts so level-specific art can be loaded on demand.
+    window.__anglemazeInitialLevel = levelNumber;
     gameRef.current = new Phaser.Game(config);
     gameRef.current._protractorVisible = false;
     gameRef.current._gameScale = getResponsiveGameScale(getViewportWidth(), getViewportHeight());
@@ -240,9 +243,7 @@ export default function GamePage() {
     // WHAT: Tell Phaser which level to load BEFORE the game starts.
     // WHY: The game reads _currentLevel in create(). If we set it
     //   after the game starts, create() would use the old default.
-    // HOW: We temporarily store it on a global that MazeScene.create()
-    //   reads. After the game starts, it copies it to this.game._currentLevel.
-    window.__anglemazeInitialLevel = levelNumber;
+    // HOW: MazeScene.create() copies this global to this.game._currentLevel.
 
     // ── Scene → React callbacks ───────────────────────────────────────────────
     //

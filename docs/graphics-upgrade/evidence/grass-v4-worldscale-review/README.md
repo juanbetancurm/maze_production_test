@@ -1,6 +1,6 @@
 # Detailed grass at fixed world scale
 
-This review keeps the approved `grass-reference-v4.png` and its dimension-matched normal map. The runtime grass tile scale is 800 world units, so one texture spans the fixed 800-unit playfield width. This removes the former 512-unit visible repeat grid in both current levels while preserving the detailed foliage style and Light2D pairing.
+At the time of these captures, the approved `grass-reference-v4.png` was the runtime color image. Runtime now uses the same 1254 × 1254 art as the q96 `grass-reference-v4.jpg` export; its original PNG master is preserved in the graphics-upgrade source archive. The dimension-matched normal map remains unchanged. The runtime grass tile scale is 800 world units, so one texture spans the fixed 800-unit playfield width. This removes the former 512-unit visible repeat grid in both current levels while preserving the detailed foliage style and Light2D pairing.
 
 ## Visual evidence
 
