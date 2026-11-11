@@ -44,7 +44,8 @@ export default function AdminPage() {
 
   const selectedTeamSummary = useMemo(() => {
     if (!selectedTeam) return '';
-    return `${selectedTeam.members.map((member) => member.name).join(', ')} - Course ${selectedTeam.course}`;
+    const courseLabel = selectedTeam.course ? ` - Course ${selectedTeam.course}` : '';
+    return `${selectedTeam.members.map((member) => member.name).join(', ')}${courseLabel}`;
   }, [selectedTeam]);
 
   const loadTeams = useCallback(async (secret = adminSecret) => {
@@ -213,7 +214,7 @@ export default function AdminPage() {
                   >
                     <span>
                       <strong>{members || 'Unnamed team'}</strong>
-                      <small>Course {team.course} - {formatDate(team.createdAt)}</small>
+                      <small>{team.course ? `Course ${team.course} · ` : ''}{formatDate(team.createdAt)}</small>
                     </span>
                     <span className="maze-admin-team-stats">
                       <small>Levels {summarizeProgress(team.levelProgress)}</small>
@@ -259,7 +260,9 @@ export default function AdminPage() {
                 <div className="maze-admin-detail-block">
                   <p className="maze-admin-detail-title">Team</p>
                   <p>{selectedTeam.members.map((member) => member.name).join(', ')}</p>
-                  <p className="maze-admin-muted">Course {selectedTeam.course}</p>
+                  <p className="maze-admin-muted">
+                    {selectedTeam.course ? `Course ${selectedTeam.course}` : 'No course selected'}
+                  </p>
                   <p className="maze-admin-muted">Created {formatDate(selectedTeam.createdAt)}</p>
                   <p className="maze-admin-id">{selectedTeam.id}</p>
                 </div>

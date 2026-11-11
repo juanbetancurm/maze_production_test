@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/useGame.js';
 import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 import { createTeam } from '../lib/api';
+import { COURSE_OPTIONS, normalizeRegistrationMembers } from '../lib/registrationValidation.js';
 
 const INSTRUCTIONS_STORAGE_KEY = 'anglemaze:instructionsSeen';
 
@@ -44,17 +45,9 @@ export default function Registration() {
   };
 
   const handleSubmit = async () => {
-    const validMembers = members
-      .map((member) => member.trim())
-      .filter((member) => member.length > 0);
-
-    if (validMembers.length === 0) {
-      setError('Please enter at least one team member name.');
-      return;
-    }
-
-    if (!course) {
-      setError('Please select your course.');
+    const memberResult = normalizeRegistrationMembers(members);
+    if (memberResult.error) {
+      setError(memberResult.error);
       return;
     }
 
@@ -62,7 +55,7 @@ export default function Registration() {
     setIsSubmitting(true);
 
     try {
-      const savedTeam = await createTeam({ members: validMembers, course });
+      const savedTeam = await createTeam({ members: memberResult.members, course: course || null });
       registerTeam(savedTeam);
       navigate('/menu');
     } catch (submitError) {
@@ -94,7 +87,7 @@ export default function Registration() {
             </p>
             <div className="maze-modal-list">
               {[
-                '1. Register your team and course to begin.',
+                '1. Enter your name, and optionally add team members or select a course.',
                 '2. Enter a distance (in pixels) and press Forward to move.',
                 '3. Enter an angle (in degrees) and press Turn Left or Turn Right to change direction.',
                 '4. Hitting a wall restarts the level. Reach the exit to save your score!',
@@ -127,7 +120,7 @@ export default function Registration() {
 
       <p className="maze-brand-tagline">Move with Math!</p>
       <p className="maze-page-subtitle">
-        Register your team to start playing
+        Register a player or team to start playing
       </p>
 
       <div className="maze-page-actions">
@@ -152,7 +145,7 @@ export default function Registration() {
           className="maze-card maze-session-card"
         >
           <p className="maze-session-copy">
-            Saved team loaded: {team.members.join(', ')} - Course {team.course}
+            Saved team loaded: {team.members.join(', ')}{team.course ? ` - Course ${team.course}` : ''}
           </p>
           <div className="maze-actions-row">
             <button
@@ -174,16 +167,18 @@ export default function Registration() {
       <div
         className="maze-field-stack"
       >
-        <label className="maze-section-label">Team Members</label>
+        <label className="maze-section-label">Participant names</label>
 
         {members.map((name, index) => (
           <div key={index} className="maze-field-row">
             <input
               type="text"
               value={name}
+              maxLength={120}
               onChange={(event) => handleMemberChange(index, event.target.value)}
-              placeholder={`Member ${index + 1}`}
-              aria-label={`Team member ${index + 1}`}
+              placeholder={index === 0 ? 'Your name' : `Team member ${index + 1}`}
+              aria-label={index === 0 ? 'Participant name (required)' : `Team member ${index + 1} (optional)`}
+              required={index === 0}
               className="maze-text-field"
             />
             {members.length > 1 && (
@@ -205,7 +200,7 @@ export default function Registration() {
             disabled={isSubmitting}
             className="maze-inline-btn maze-inline-btn-add"
           >
-            + Add member
+            + Add team member
           </button>
         )}
       </div>
@@ -213,7 +208,7 @@ export default function Registration() {
       <div
         className="maze-field-stack"
       >
-        <label className="maze-section-label" htmlFor="team-course">Course</label>
+        <label className="maze-section-label" htmlFor="team-course">Course (optional)</label>
         <select
           id="team-course"
           value={course}
@@ -221,10 +216,10 @@ export default function Registration() {
           disabled={isSubmitting}
           className="maze-select-field"
         >
-          <option value="">Select your course...</option>
-          <option value="8A">8A</option>
-          <option value="8B">8B</option>
-          <option value="8C">8C</option>
+          <option value="">Select a course (optional)</option>
+          {COURSE_OPTIONS.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
       </div>
 

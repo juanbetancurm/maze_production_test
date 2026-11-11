@@ -15,11 +15,11 @@ AngleMaze makes geometry part of the action. Instead of steering with arrow keys
 
 The game is intended for learners practicing angles, distance, coordinates, and spatial reasoning, and for educators demonstrating those ideas through interaction. It is a practice experience; no formal learning-outcome study is claimed.
 
-Players register a team and course before choosing a level. Completed runs record moves, elapsed time, and remaining lives. The level leaderboard orders teams by fewest moves, then fastest time, then most lives remaining.
+Players register at least one participant name before choosing a level. Course selection is optional; teachers can choose Course A, B, C, D, or E to organize groups. Completed runs record moves, elapsed time, and remaining lives. The level leaderboard orders teams by fewest moves, then fastest time, then most lives remaining.
 
 ## How the game works
 
-1. **Register a team and course.** Team progress is stored by the game’s API.
+1. **Register a player or team.** At least one participant name is required; selecting Course A–E is optional. Team progress is stored by the game’s API.
 2. **Choose a level.** Level 1 introduces right-angle routes. Completing it unlocks Level 2.
 3. **Move by distance.** Enter a distance in maze pixels and choose **Forward**. The character travels along its current heading; a turn and a move are separate commands.
 4. **Turn by degrees.** Choose **Turn Left** or **Turn Right** and enter an angle. The character rotates in place.

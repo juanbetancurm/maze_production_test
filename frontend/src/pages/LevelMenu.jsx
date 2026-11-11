@@ -118,7 +118,7 @@ export default function LevelMenu() {
 
       {team && (
         <p className="maze-status-copy">
-          Team: {team.members.join(', ')} - Course {team.course}
+          Team: {team.members.join(', ')}{team.course ? ` - Course ${team.course}` : ''}
         </p>
       )}
 
@@ -224,7 +224,7 @@ export default function LevelMenu() {
                               {winner.members.join(', ')}
                             </p>
                             <p className="maze-winner-subcopy">
-                              Course {winner.course}
+                              {winner.course ? `Course ${winner.course}` : 'No course selected'}
                             </p>
                           </div>
                           <div className="maze-winner-stats">

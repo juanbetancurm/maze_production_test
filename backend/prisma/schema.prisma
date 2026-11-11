@@ -9,7 +9,7 @@ datasource db {
 
 model Team {
   id        String   @id @default(uuid())
-  course    String   @db.VarChar(20)
+  course    String?  @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 

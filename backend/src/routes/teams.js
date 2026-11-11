@@ -1,29 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../db");
+const { validateTeamRegistration } = require("../validation/teamRegistration");
 
 // POST /api/teams — Register a new team
 router.post("/", async (req, res) => {
   try {
-    const { members, course } = req.body;
-
-    // Basic validation
-    if (!course || typeof course !== "string") {
-      return res.status(400).json({ error: "course is required" });
+    const validated = validateTeamRegistration(req.body);
+    if (validated.error) {
+      return res.status(400).json({ error: validated.error });
     }
-    if (!Array.isArray(members) || members.length === 0) {
-      return res.status(400).json({ error: "at least one member is required" });
-    }
-    for (const name of members) {
-      if (!name || typeof name !== "string" || name.trim().length === 0) {
-        return res.status(400).json({ error: "each member must have a non-empty name" });
-      }
-    }
+    const { members, course } = validated;
 
     // Create team with members in a single transaction
     const team = await prisma.team.create({
       data: {
-        course: course.trim(),
+        course,
         members: {
           create: members.map((name) => ({ name: name.trim() })),
         },
