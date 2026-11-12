@@ -7,7 +7,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seed.js",
-    "test": "node --test test/teamRegistration.test.js"
+    "test": "node --test test/teamRegistration.test.js test/leaderboard.test.js"
   },
   "keywords": [],
   "author": "",

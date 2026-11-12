@@ -6,7 +6,7 @@
  * HOW: Reads levelProgress from GameContext and fetches leaderboard data from
  *   the backend for completed levels.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/useGame.js';
 import { getLeaderboard } from '../lib/api';
@@ -27,6 +27,7 @@ const LEVELS = [
     color: '#cc8833',
   },
 ];
+const LEADERBOARD_PAGE_SIZE = 5;
 
 function formatDuration(totalSeconds) {
   if (typeof totalSeconds !== 'number' || Number.isNaN(totalSeconds)) {
@@ -50,25 +51,46 @@ export default function LevelMenu() {
   } = useGame();
   const [leaderboards, setLeaderboards] = useState({});
   const [leaderboardErrors, setLeaderboardErrors] = useState({});
+  const [leaderboardLoading, setLeaderboardLoading] = useState({});
+  const [expandedLeaderboards, setExpandedLeaderboards] = useState({});
+  const leaderboardPagesRef = useRef({});
+  const leaderboardTeamIdRef = useRef(null);
 
   const handlePlayAgain = () => {
     clearSavedSession();
     navigate('/');
   };
 
+  const teamId = team?.id;
+
   useEffect(() => {
-    if (!team) return;
+    if (!teamId) return;
+
+    const isNewTeam = leaderboardTeamIdRef.current !== teamId;
+    if (isNewTeam) {
+      leaderboardTeamIdRef.current = teamId;
+      leaderboardPagesRef.current = {};
+      setLeaderboards({});
+      setLeaderboardErrors({});
+      setLeaderboardLoading({});
+      setExpandedLeaderboards({});
+    }
 
     const completedLevels = LEVELS.filter((level) => levelProgress[level.num]?.completed);
     if (completedLevels.length === 0) return;
 
     let cancelled = false;
+    setLeaderboardLoading((previous) => ({
+      ...previous,
+      ...Object.fromEntries(completedLevels.map((level) => [level.num, true])),
+    }));
 
     async function loadLeaderboards() {
       const results = await Promise.all(
         completedLevels.map(async (level) => {
           try {
-            const data = await getLeaderboard(level.num);
+            const page = isNewTeam ? 1 : (leaderboardPagesRef.current[level.num] || 1);
+            const data = await getLeaderboard(level.num, { page, pageSize: LEADERBOARD_PAGE_SIZE });
             return { levelNum: level.num, data, error: '' };
           } catch (error) {
             return {
@@ -82,18 +104,29 @@ export default function LevelMenu() {
 
       if (cancelled) return;
 
-      const nextLeaderboards = {};
-      const nextErrors = {};
-
-      results.forEach(({ levelNum, data, error }) => {
-        nextLeaderboards[levelNum] = data;
-        if (error) {
-          nextErrors[levelNum] = error;
-        }
+      setLeaderboards((previous) => {
+        const next = { ...previous };
+        results.forEach(({ levelNum, data, error }) => {
+          if (!error) {
+            next[levelNum] = data;
+            leaderboardPagesRef.current[levelNum] = data.page || 1;
+          }
+        });
+        return next;
       });
-
-      setLeaderboards(nextLeaderboards);
-      setLeaderboardErrors(nextErrors);
+      setLeaderboardErrors((previous) => {
+        const next = { ...previous };
+        results.forEach(({ levelNum, error }) => {
+          if (error) next[levelNum] = error;
+          else delete next[levelNum];
+        });
+        return next;
+      });
+      setLeaderboardLoading((previous) => {
+        const next = { ...previous };
+        completedLevels.forEach((level) => { next[level.num] = false; });
+        return next;
+      });
     }
 
     loadLeaderboards();
@@ -101,7 +134,48 @@ export default function LevelMenu() {
     return () => {
       cancelled = true;
     };
-  }, [team, levelProgress]);
+  }, [teamId, levelProgress]);
+
+  const toggleLeaderboard = (levelNum) => {
+    setExpandedLeaderboards((previous) => ({
+      ...previous,
+      [levelNum]: !previous[levelNum],
+    }));
+  };
+
+  const changeLeaderboardPage = async (levelNum, requestedPage) => {
+    if (leaderboardLoading[levelNum]) return;
+
+    const currentPage = leaderboards[levelNum]?.page || 1;
+    leaderboardPagesRef.current[levelNum] = requestedPage;
+    setLeaderboardLoading((previous) => ({ ...previous, [levelNum]: true }));
+    setLeaderboardErrors((previous) => {
+      const next = { ...previous };
+      delete next[levelNum];
+      return next;
+    });
+
+    try {
+      const data = await getLeaderboard(levelNum, {
+        page: requestedPage,
+        pageSize: LEADERBOARD_PAGE_SIZE,
+      });
+      if (leaderboardTeamIdRef.current !== teamId) return;
+      leaderboardPagesRef.current[levelNum] = data.page || 1;
+      setLeaderboards((previous) => ({ ...previous, [levelNum]: data }));
+    } catch (error) {
+      if (leaderboardTeamIdRef.current !== teamId) return;
+      leaderboardPagesRef.current[levelNum] = currentPage;
+      setLeaderboardErrors((previous) => ({
+        ...previous,
+        [levelNum]: error.message || 'Could not load the rankings.',
+      }));
+    } finally {
+      if (leaderboardTeamIdRef.current === teamId) {
+        setLeaderboardLoading((previous) => ({ ...previous, [levelNum]: false }));
+      }
+    }
+  };
 
   if (isHydrating) {
     return <GameLoadingScreen label="Restoring your team…" />;
@@ -152,6 +226,14 @@ export default function LevelMenu() {
           const isPlayable = progress.unlocked && !progress.completed;
           const leaderboard = leaderboards[level.num];
           const leaderboardError = leaderboardErrors[level.num];
+          const isLeaderboardExpanded = Boolean(expandedLeaderboards[level.num]);
+          const isLeaderboardLoading = Boolean(leaderboardLoading[level.num]);
+          const leaderboardEntries = leaderboard?.winners ?? [];
+          const totalEntries = leaderboard?.totalEntries ?? leaderboardEntries.length;
+          const currentPage = leaderboard?.page ?? 1;
+          const totalPages = leaderboard?.totalPages
+            ?? Math.max(1, Math.ceil(totalEntries / LEADERBOARD_PAGE_SIZE));
+          const leaderboardId = `level-${level.num}-leaderboard-content`;
           const prefetchGamePage = () => {
             if (!isPlayable) return;
             preloadGamePage().catch(() => {});
@@ -186,63 +268,158 @@ export default function LevelMenu() {
               </button>
 
               {isCompleted && (
-                <div className="maze-card maze-card-soft maze-leaderboard-card">
+                <section className="maze-card maze-card-soft maze-leaderboard-card" aria-labelledby={`level-${level.num}-leaderboard-title`}>
                   <div className="maze-leaderboard-head">
-                    <div>
-                      <p className="maze-leaderboard-title">Winners Chart</p>
-                      <p className="maze-leaderboard-copy">
-                        Level {level.num} ranked by moves first, then time, then lives
-                      </p>
+                    <div className="maze-leaderboard-heading">
+                      <span className="maze-leaderboard-emblem" aria-hidden="true">◇</span>
+                      <div>
+                        <p className="maze-leaderboard-title" id={`level-${level.num}-leaderboard-title`}>
+                          Leaderboard
+                        </p>
+                        <p className="maze-leaderboard-copy">
+                          Level {level.num} · ranked by moves, time, then lives
+                        </p>
+                      </div>
                     </div>
-                    <span className="maze-leaderboard-cap">Top 10</span>
+                    <div className="maze-leaderboard-header-actions">
+                      <span className="maze-leaderboard-cap" aria-live="polite">
+                        {isLeaderboardLoading && !leaderboard
+                          ? 'Loading'
+                          : `${totalEntries} ${totalEntries === 1 ? 'entry' : 'entries'}`}
+                      </span>
+                      <button
+                        type="button"
+                        className="maze-pill-btn maze-leaderboard-toggle"
+                        aria-expanded={isLeaderboardExpanded}
+                        aria-controls={leaderboardId}
+                        aria-label={`${isLeaderboardExpanded ? 'Hide' : 'Show'} Level ${level.num} rankings`}
+                        onClick={() => toggleLeaderboard(level.num)}
+                      >
+                        {isLeaderboardExpanded ? 'Hide rankings' : 'Show rankings'}
+                        <svg
+                          className={`maze-leaderboard-chevron${isLeaderboardExpanded ? ' is-open' : ''}`}
+                          aria-hidden="true"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="m3 6 5 5 5-5" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
-                  {leaderboardError && (
-                    <p className="maze-info-copy error">{leaderboardError}</p>
+                  {leaderboardError && !isLeaderboardExpanded && (
+                    <p className="maze-leaderboard-error" role="alert">{leaderboardError}</p>
                   )}
 
-                  {!leaderboardError && !leaderboard && (
-                    <p className="maze-info-copy">Loading winners...</p>
-                  )}
-
-                  {!leaderboardError && leaderboard?.winners?.length === 0 && (
-                    <p className="maze-info-copy">No winners yet for this level.</p>
-                  )}
-
-                  {!leaderboardError && leaderboard?.winners?.length > 0 && (
-                    <div className="maze-leaderboard-list">
-                      {leaderboard.winners.map((winner) => (
-                        <div
-                          key={`${level.num}-${winner.teamId}`}
-                          className={`maze-leaderboard-row${winner.teamId === team?.id ? ' is-current' : ''}`}
-                        >
-                          <div className="maze-rank">
-                            #{winner.rank}
-                          </div>
-                          <div>
-                            <p className="maze-winner-name">
-                              {winner.members.join(', ')}
-                            </p>
-                            <p className="maze-winner-subcopy">
-                              {winner.course ? `Course ${winner.course}` : 'No course selected'}
-                            </p>
-                          </div>
-                          <div className="maze-winner-stats">
-                            <p>
-                              {winner.bestMoves ?? '-'} moves
-                            </p>
-                            <p>
-                              {formatDuration(winner.bestTimeSeconds)} time
-                            </p>
-                            <p>
-                              {winner.bestLivesRemaining ?? '-'} lives
-                            </p>
-                          </div>
+                  <div
+                    id={leaderboardId}
+                    className={`maze-leaderboard-disclosure${isLeaderboardExpanded ? ' is-expanded' : ''}`}
+                    aria-hidden={!isLeaderboardExpanded}
+                    inert={!isLeaderboardExpanded}
+                  >
+                    <div className="maze-leaderboard-disclosure-inner">
+                      {leaderboardError && (
+                        <div className="maze-leaderboard-error-row" role="alert">
+                          <p className="maze-leaderboard-error">{leaderboardError}</p>
+                          <button
+                            type="button"
+                            className="maze-inline-btn"
+                            disabled={isLeaderboardLoading}
+                            onClick={() => changeLeaderboardPage(level.num, currentPage)}
+                          >
+                            Retry
+                          </button>
                         </div>
-                      ))}
+                      )}
+
+                      {isLeaderboardLoading && !leaderboard && (
+                        <p className="maze-leaderboard-empty" role="status">Loading rankings…</p>
+                      )}
+
+                      {!leaderboardError && !leaderboard && !isLeaderboardLoading && (
+                        <p className="maze-leaderboard-empty" role="status">Rankings are not available yet.</p>
+                      )}
+
+                      {leaderboard && totalEntries === 0 && !leaderboardError && (
+                        <p className="maze-leaderboard-empty">No completed runs yet. Finish the level to appear here.</p>
+                      )}
+
+                      {leaderboardEntries.length > 0 && (
+                        <>
+                          <ol
+                            className="maze-leaderboard-list"
+                            aria-label={`Level ${level.num} rankings`}
+                            start={leaderboardEntries[0]?.rank ?? 1}
+                          >
+                            {leaderboardEntries.map((winner) => {
+                              const rankTone = winner.rank === 1
+                                ? ' is-first'
+                                : winner.rank === 2
+                                  ? ' is-second'
+                                  : winner.rank === 3
+                                    ? ' is-third'
+                                    : '';
+                              const isCurrentTeam = winner.teamId === teamId;
+
+                              return (
+                                <li
+                                  key={`${level.num}-${winner.teamId}`}
+                                  className={`maze-leaderboard-row${isCurrentTeam ? ' is-current' : ''}`}
+                                >
+                                  <span className={`maze-rank${rankTone}`} aria-label={`Rank ${winner.rank}`}>
+                                    {winner.rank}
+                                  </span>
+                                  <div className="maze-winner-identity">
+                                    <p className="maze-winner-name">{winner.members.join(', ')}</p>
+                                    <p className="maze-winner-subcopy">
+                                      {isCurrentTeam ? 'Your team' : winner.course ? `Course ${winner.course}` : 'No course selected'}
+                                    </p>
+                                  </div>
+                                  <div
+                                    className="maze-winner-stats"
+                                    aria-label={`${winner.bestMoves ?? '-'} moves, ${formatDuration(winner.bestTimeSeconds)} time, ${winner.bestLivesRemaining ?? '-'} lives remaining`}
+                                  >
+                                    <span>{winner.bestMoves ?? '-'} moves</span>
+                                    <span className="maze-winner-stat-divider" aria-hidden="true">·</span>
+                                    <span>{formatDuration(winner.bestTimeSeconds)}</span>
+                                    <span className="maze-winner-stat-divider" aria-hidden="true">·</span>
+                                    <span>{winner.bestLivesRemaining ?? '-'} lives</span>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ol>
+
+                          {totalPages > 1 && (
+                            <nav className="maze-leaderboard-pagination" aria-label={`Level ${level.num} leaderboard pages`}>
+                              <button
+                                type="button"
+                                className="maze-pill-btn maze-leaderboard-page-btn"
+                                onClick={() => changeLeaderboardPage(level.num, currentPage - 1)}
+                                disabled={currentPage <= 1 || isLeaderboardLoading}
+                                aria-label="Previous rankings page"
+                              >
+                                ‹ Previous
+                              </button>
+                              <span className="maze-leaderboard-page-status" aria-live="polite">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                className="maze-pill-btn maze-leaderboard-page-btn"
+                                onClick={() => changeLeaderboardPage(level.num, currentPage + 1)}
+                                disabled={currentPage >= totalPages || isLeaderboardLoading}
+                                aria-label="Next rankings page"
+                              >
+                                Next ›
+                              </button>
+                            </nav>
+                          )}
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                </section>
               )}
             </div>
           );

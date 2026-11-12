@@ -42,6 +42,7 @@ export function completeLevel({ teamId, level, moves, livesRemaining, elapsedSec
   });
 }
 
-export function getLeaderboard(levelId) {
-  return request(`/progress/leaderboard/${levelId}`);
+export function getLeaderboard(levelId, { page = 1, pageSize = 10 } = {}) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return request(`/progress/leaderboard/${levelId}?${query.toString()}`);
 }

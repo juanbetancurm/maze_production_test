@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../db");
+const { getLeaderboardPage, parseLeaderboardPagination } = require("../services/leaderboard");
 
 // POST /api/progress/complete-level — Mark a level as completed
 router.post("/complete-level", async (req, res) => {
@@ -107,44 +108,13 @@ router.get("/leaderboard/:levelId", async (req, res) => {
       return res.status(400).json({ error: "levelId must be a positive integer" });
     }
 
-    const leaderboard = await prisma.levelProgress.findMany({
-      where: {
-        levelId,
-        completed: true,
-      },
-      include: {
-        team: {
-          include: {
-            members: {
-              orderBy: { createdAt: "asc" },
-            },
-          },
-        },
-        level: true,
-      },
-      orderBy: [
-        { bestMoves: "asc" },
-        { bestTimeSeconds: "asc" },
-        { bestLivesRemaining: "desc" },
-        { completedAt: "asc" },
-      ],
-      take: 10,
-    });
+    const pagination = parseLeaderboardPagination(req.query);
+    if (pagination.error) {
+      return res.status(400).json({ error: pagination.error });
+    }
 
-    res.json({
-      levelId,
-      levelName: leaderboard[0]?.level?.name || null,
-      winners: leaderboard.map((entry, index) => ({
-        rank: index + 1,
-        teamId: entry.teamId,
-        course: entry.team.course,
-        members: entry.team.members.map((member) => member.name),
-        bestMoves: entry.bestMoves,
-        bestTimeSeconds: entry.bestTimeSeconds,
-        bestLivesRemaining: entry.bestLivesRemaining,
-        completedAt: entry.completedAt,
-      })),
-    });
+    const result = await getLeaderboardPage(prisma, levelId, pagination);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
     res.status(500).json({ error: "failed to fetch leaderboard" });
