@@ -10,6 +10,7 @@ import { Component, createRef, Suspense } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useGame } from './context/useGame.js';
 import GameLoadingScreen from './components/GameLoadingScreen.jsx';
+import IntroCinematic from './components/IntroCinematic.jsx';
 import { GamePageRoute } from './routes/gameRoute.js';
 import Registration from './pages/Registration';
 import LevelMenu from './pages/LevelMenu';
@@ -73,6 +74,8 @@ function RequireTeam({ children }) {
 
 export default function App() {
   return (
+    <>
+    <IntroCinematic />
     <Routes>
       <Route path="/" element={<Registration />} />
       <Route path="/admin" element={<AdminPage />} />
@@ -98,5 +101,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

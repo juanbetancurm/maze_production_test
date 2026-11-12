@@ -6,18 +6,26 @@
  * HOW: Saves the team through the backend, then stores the backend response in
  *   GameContext.
  */
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../context/useGame.js';
 import GameLoadingScreen from '../components/GameLoadingScreen.jsx';
 import { createTeam } from '../lib/api';
 import { COURSE_OPTIONS, normalizeRegistrationMembers } from '../lib/registrationValidation.js';
+import {
+  getIntroSnapshot,
+  markIntroSeen,
+  openIntro,
+  prefersReducedData,
+  subscribeIntro,
+} from '../lib/introCinematic.js';
 
 const INSTRUCTIONS_STORAGE_KEY = 'anglemaze:instructionsSeen';
 
 export default function Registration() {
   const navigate = useNavigate();
   const { team, isHydrating, registerTeam, clearSavedSession } = useGame();
+  const { seen: introSeen } = useSyncExternalStore(subscribeIntro, getIntroSnapshot);
   const [members, setMembers] = useState(['', '']);
   const [course, setCourse] = useState('');
   const [error, setError] = useState('');
@@ -56,8 +64,22 @@ export default function Registration() {
 
     try {
       const savedTeam = await createTeam({ members: memberResult.members, course: course || null });
-      registerTeam(savedTeam);
-      navigate('/menu');
+      const enterGame = () => {
+        registerTeam(savedTeam);
+        navigate('/menu');
+      };
+
+      if (introSeen) {
+        enterGame();
+      } else if (prefersReducedData()) {
+        // Data saver: do not send the video unasked, but offer it from now on.
+        markIntroSeen();
+        enterGame();
+      } else {
+        // First time in this browser: the intro covers the page, then the
+        // level menu is opened underneath it.
+        openIntro({ onCovered: enterGame });
+      }
     } catch (submitError) {
       setError(submitError.message || 'Could not save your team. Please try again.');
     } finally {
@@ -130,6 +152,16 @@ export default function Registration() {
         >
           View Instructions
         </button>
+
+        {introSeen && (
+          <button
+            onClick={() => openIntro()}
+            className="maze-pill-btn"
+            data-watch-intro="true"
+          >
+            Watch Intro
+          </button>
+        )}
 
         <a
           href="https://www.labolavs.com/category/games"

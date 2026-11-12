@@ -2681,3 +2681,189 @@ body:has(.maze-experience) {
     transform: none;
   }
 }
+
+/* ── Cinematic introduction overlay (IntroCinematic.jsx) ─────────────────── */
+.maze-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  height: 100dvh;
+  background: #000;
+  color: #f5ead3;
+  font-family: "Aptos", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  outline: none;
+  transition: opacity 450ms ease;
+}
+
+.maze-intro.is-visible {
+  opacity: 1;
+}
+
+.maze-intro-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.maze-intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  cursor: pointer;
+}
+
+.maze-intro-video.is-hidden {
+  visibility: hidden;
+}
+
+.maze-intro-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+
+.maze-intro-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.maze-intro-message {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.maze-intro-btn {
+  position: relative;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid rgb(245 234 211 / 55%);
+  border-radius: 10px;
+  background: rgb(8 16 22 / 72%);
+  color: #fcf8ed;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: opacity 400ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.maze-intro-btn:hover:not(:disabled) {
+  background: rgb(22 42 53 / 92%);
+  border-color: #f5bb48;
+}
+
+.maze-intro-btn:focus-visible {
+  outline: 3px solid #f5bb48;
+  outline-offset: 3px;
+}
+
+.maze-intro-btn-primary {
+  background: #226340;
+  border-color: #226340;
+}
+
+.maze-intro-btn-primary:hover:not(:disabled) {
+  background: #2a774d;
+}
+
+.maze-intro-skip {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.maze-intro-skip.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.maze-intro-resume {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.maze-intro-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid rgb(245 234 211 / 22%);
+  border-top-color: #f5bb48;
+  border-radius: 50%;
+  animation: maze-loading-spin 0.9s linear infinite;
+  pointer-events: none;
+}
+
+.maze-intro-rotate {
+  display: none;
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  margin: 0;
+  color: rgb(245 234 211 / 70%);
+  font-size: 0.82rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .maze-intro-rotate {
+    display: block;
+  }
+}
+
+.maze-intro-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgb(245 234 211 / 12%);
+  pointer-events: none;
+}
+
+.maze-intro-progress-fill {
+  width: 100%;
+  height: 100%;
+  background: #f5bb48;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maze-intro,
+  .maze-intro-btn {
+    transition: none;
+  }
+}
