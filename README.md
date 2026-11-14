@@ -17,6 +17,13 @@ The game is intended for learners practicing angles, distance, coordinates, and 
 
 Players register at least one participant name before choosing a level. Course selection is optional; teachers can choose Course A, B, C, D, or E to organize groups. Completed runs record moves, elapsed time, and remaining lives. The level leaderboard orders teams by fewest moves, then fastest time, then most lives remaining.
 
+## Cinematic introduction
+
+New players see a short cinematic the first time they start the game: Pipe enters the maze, meets a Stone Golem, and reaches the exit. It can be skipped, and replayed later from the registration page.
+
+![Cinematic introduction: Pipe walks into a wooden maze, the AngleMaze title appears, a Stone Golem rises and swings at him, Pipe celebrates at the exit, and a dedication reads “In memory of Pipe, Felipe Gómez Trujillo”](docs/media/gifs/cinematic-intro.gif)
+<p align="center"><em>Cinematic scenes from the introduction, shortened and without the gameplay segments shown below.</em></p>
+
 ## How the game works
 
 1. **Register a player or team.** At least one participant name is required; selecting Course A–E is optional. Team progress is stored by the game’s API.
